@@ -49,7 +49,6 @@ export function Sidebar() {
     { id: 'admin-trades', label: 'Trading Posts', icon: ShoppingCart },
     { id: 'admin-wishlists', label: 'Wishlists', icon: Heart },
     { id: 'admin-events', label: 'Events', icon: Calendar },
-    { id: 'admin-reports', label: 'User Reports', icon: Flag },
     { id: 'admin-flagged', label: 'Flagged Content', icon: AlertTriangle }
   ];
 

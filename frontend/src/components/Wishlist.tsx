@@ -27,7 +27,8 @@ import {
   Eye,
   X,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Flag
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
@@ -78,6 +79,14 @@ interface WishlistDetailsModalProps {
   canEdit: boolean;
   canDelete: boolean;
   deleteLoading: boolean;
+  onReport?: (wishlist: WishlistItem) => void;
+}
+
+interface ReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reportData: { reason: string; description: string; wishlistId: string }) => Promise<void>;
+  wishlistId: string;
 }
 
 // Date formatting helper
@@ -110,7 +119,8 @@ function WishlistDetailsModal({
   onDelete, 
   canEdit, 
   canDelete, 
-  deleteLoading 
+  deleteLoading,
+  onReport 
 }: WishlistDetailsModalProps) {
   const [comments, setComments] = useState<WishlistComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -551,6 +561,19 @@ function WishlistDetailsModal({
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t">
+            {/* Report Button - Always visible for logged-in users */}
+            {apiService.isAuthenticated() && onReport && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReport(wishlist)}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                <Flag className="w-4 h-4 mr-2" />
+                Report
+              </Button>
+            )}
+
             {canEdit ? (
               <>
                 <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
@@ -608,6 +631,114 @@ function WishlistDetailsModal({
   );
 }
 
+interface ReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reportData: { reason: string; description: string; wishlistId: string }) => Promise<void>;
+  wishlistId: string;
+}
+
+// Report Modal Component
+function ReportModal({ isOpen, onClose, onSubmit, wishlistId }: ReportModalProps) {
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportReason.trim()) return;
+
+    try {
+      setSubmitting(true);
+      await onSubmit({
+        reason: reportReason,
+        description: reportDescription,
+        wishlistId
+      });
+      setReportReason('');
+      setReportDescription('');
+      onClose();
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reportReasons = [
+    'Spam or inappropriate content',
+    'Harassment or bullying',
+    'Scam or fraudulent activity',
+    'Copyright infringement',
+    'False information',
+    'Other'
+  ];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Flag className="w-5 h-5 text-red-500" />
+            Report Wishlist Item
+          </DialogTitle>
+          <DialogDescription>
+            Help us keep the community safe by reporting inappropriate content.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="report-reason">Reason for report *</Label>
+            <Select value={reportReason} onValueChange={setReportReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {reportReasons.map((reason) => (
+                  <SelectItem key={reason} value={reason}>
+                    {reason}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="report-description">Additional details (optional)</Label>
+            <Textarea
+              id="report-description"
+              placeholder="Provide more context about this report..."
+              value={reportDescription}
+              onChange={(e) => setReportDescription(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!reportReason.trim() || submitting} className="bg-red-500 hover:bg-red-600 text-white">
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Flag className="w-4 h-4 mr-2" />
+                  Submit Report
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Wishlist() {
   const { isLoggedIn } = useAuth();
 
@@ -636,6 +767,9 @@ export function Wishlist() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedWishlistForReport, setSelectedWishlistForReport] = useState<WishlistItem | null>(null);
   
   const [newWishlist, setNewWishlist] = useState({
     itemName: '',
@@ -789,6 +923,54 @@ export function Wishlist() {
     if (selectedWishlist) {
       setIsDetailsDialogOpen(false);
       handleDeleteWishlist(selectedWishlist.wishlist_id, selectedWishlist.item_name);
+    }
+  };
+
+  const handleReportWishlist = (wishlist: WishlistItem) => {
+    setSelectedWishlistForReport(wishlist);
+    setIsReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async (reportData: { reason: string; description: string }) => {
+    if (!selectedWishlistForReport) return;
+
+    try {
+      // Map frontend reason strings to backend enum values
+      const reasonMapping: Record<string, 'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'> = {
+        'Spam or inappropriate content': 'Inappropriate Content',
+        'Harassment or bullying': 'Harassment',
+        'Scam or fraudulent activity': 'Scamming',
+        'Copyright infringement': 'Other',
+        'False information': 'Other',
+        'Other': 'Other'
+      };
+
+      await apiService.createReport({
+        post_id: selectedWishlistForReport.wishlist_id,
+        post_type: 'wishlist',
+        reason: reportData.description || reportData.reason, // Use description as reason if provided, otherwise use the selected reason
+        type: reasonMapping[reportData.reason] || 'Other'
+      });
+
+      setIsReportModalOpen(false);
+      setSelectedWishlistForReport(null);
+      
+      toast.success('Report submitted successfully', {
+        description: 'Thank you for helping keep our community safe.'
+      });
+    } catch (err: unknown) {
+      console.error('Failed to submit report:', err);
+      let errorMessage = 'Failed to submit report';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('network') || err.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      toast.error('Failed to submit report', { description: errorMessage });
     }
   };
 
@@ -1568,6 +1750,15 @@ export function Wishlist() {
         canEdit={selectedWishlist ? canEditWishlist(selectedWishlist) : false}
         canDelete={selectedWishlist ? canDeleteWishlist(selectedWishlist) : false}
         deleteLoading={selectedWishlist ? deleteLoading === selectedWishlist.wishlist_id : false}
+        onReport={handleReportWishlist}
+      />
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSubmit={handleSubmitReport}
+        wishlistId={selectedWishlistForReport?.wishlist_id || ''}
       />
     </div>
   );

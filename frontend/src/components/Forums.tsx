@@ -31,7 +31,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  Send
+  Send,
+  Flag
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
@@ -67,6 +68,34 @@ interface ForumComment {
   created_at: string;
   username: string;
   credibility_score?: number;
+}
+
+interface ForumImageModalProps {
+  images: { filename: string; originalName?: string }[];
+  currentIndex: number;
+  isOpen: boolean;
+  onClose: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}
+
+interface PostDetailsModalProps {
+  post: ForumPost | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  deleteLoading: boolean;
+  onReport?: () => void;
+}
+
+interface ReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string, description: string) => void;
+  loading: boolean;
 }
 
 // Enhanced Image Display Component - MOVED TO TOP
@@ -199,8 +228,96 @@ function ForumImageModal({ images, currentIndex, isOpen, onClose, onNext, onPrev
   );
 }
 
+// Report Modal Component
+function ReportModal({ isOpen, onClose, onSubmit, loading }: ReportModalProps) {
+  const [reason, setReason] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      toast.error('Please select a reason for the report');
+      return;
+    }
+    onSubmit(reason, description);
+  };
+
+  const reportReasons = [
+    { value: 'Spam or inappropriate content', label: 'Spam or inappropriate content' },
+    { value: 'Harassment or bullying', label: 'Harassment or bullying' },
+    { value: 'Hate speech', label: 'Hate speech' },
+    { value: 'Misinformation', label: 'Misinformation' },
+    { value: 'Copyright violation', label: 'Copyright violation' },
+    { value: 'Other', label: 'Other' }
+  ];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Flag className="w-5 h-5 text-red-500" />
+            Report Post
+          </DialogTitle>
+          <DialogDescription>
+            Help us keep the community safe by reporting inappropriate content.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="report-reason">Reason *</Label>
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {reportReasons.map((reportReason) => (
+                  <SelectItem key={reportReason.value} value={reportReason.value}>
+                    {reportReason.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="report-description">Additional Details (optional)</Label>
+            <Textarea
+              id="report-description"
+              placeholder="Provide more details about why you're reporting this post..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="destructive" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Reporting...
+                </>
+              ) : (
+                <>
+                  <Flag className="w-4 h-4 mr-2" />
+                  Report
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Enhanced Post Details Modal Component with upvote/downvote and comments
-function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading }: PostDetailsModalProps) {
+function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport }: PostDetailsModalProps) {
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -548,6 +665,12 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Reply to Post
                 </Button>
+                {onReport && (
+                  <Button variant="outline" onClick={onReport} className="text-orange-600 hover:text-orange-700">
+                    <Flag className="w-4 h-4 mr-2" />
+                    Report
+                  </Button>
+                )}
                 <Button variant="outline" onClick={onEdit}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
@@ -575,6 +698,12 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Reply to Post
                 </Button>
+                {onReport && (
+                  <Button variant="outline" onClick={onReport} className="text-orange-600 hover:text-orange-700">
+                    <Flag className="w-4 h-4 mr-2" />
+                    Report
+                  </Button>
+                )}
                 {canDelete && (
                   <Button 
                     variant="outline" 
@@ -647,6 +776,10 @@ export function Forums() {
   const [isForumImageModalOpen, setIsForumImageModalOpen] = useState(false);
   const [modalSelectedImages, setModalSelectedImages] = useState<{ filename: string; originalName?: string }[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Report modal state
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Load current user
   useEffect(() => {
@@ -722,6 +855,51 @@ export function Forums() {
     if (selectedPost) {
       setIsPostDetailsOpen(false);
       handleDeletePost(selectedPost.post_id, selectedPost.title);
+    }
+  };
+
+  // Report functions
+  const handleReportPost = (post: ForumPost) => {
+    setSelectedPost(post);
+    setIsReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async (reason: string, description: string) => {
+    if (!selectedPost) return;
+
+    try {
+      setReportLoading(true);
+
+      // Map frontend reason strings to backend enum values
+      const reasonMapping: { [key: string]: string } = {
+        'Spam or inappropriate content': 'Inappropriate Content',
+        'Harassment or bullying': 'Harassment',
+        'Hate speech': 'Hate Speech',
+        'Misinformation': 'Misinformation',
+        'Copyright violation': 'Copyright Violation',
+        'Other': 'Other'
+      };
+
+      const backendReason = reasonMapping[reason] || 'Other';
+
+      await apiService.createReport({
+        post_id: selectedPost.post_id,
+        post_type: 'forum',
+        reason: description || backendReason, // Use description as reason if provided, otherwise use the selected reason
+        type: backendReason as 'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'
+      });
+
+      setIsReportModalOpen(false);
+      toast.success('Report submitted successfully', {
+        description: 'Thank you for helping keep the community safe.'
+      });
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      toast.error('Failed to submit report', {
+        description: 'Please try again later.'
+      });
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -1624,6 +1802,7 @@ export function Forums() {
         canEdit={selectedPost ? canEditPost(selectedPost) : false}
         canDelete={selectedPost ? canDeletePost(selectedPost) : false}
         deleteLoading={selectedPost ? deleteLoading === selectedPost.post_id : false}
+        onReport={selectedPost && currentUser && currentUser.id !== selectedPost.user_id ? () => handleReportPost(selectedPost) : undefined}
       />
 
       <ForumImageModal
@@ -1633,6 +1812,13 @@ export function Forums() {
         onClose={() => setIsForumImageModalOpen(false)}
         onNext={handleNextForumImage}
         onPrevious={handlePreviousForumImage}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSubmit={handleSubmitReport}
+        loading={reportLoading}
       />
     </div>
   );

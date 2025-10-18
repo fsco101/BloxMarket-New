@@ -35,7 +35,6 @@ import { ForumManagement } from './admin/ForumManagement';
 import { TradingPostManagement } from './admin/TradingPostManagement';
 import { WishlistManagement } from './admin/WishlistManagement';
 import { EventsManagement } from './admin/EventsManagement';
-import { UserReports } from './admin/UserReports';
 import { FlaggedPosts } from './admin/FlaggedPosts';
 
 interface AdminStats {

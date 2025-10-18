@@ -29,9 +29,9 @@ import {
   Check,
   CheckCircle,
   Send,
-  Star,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Flag
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { formatDistanceToNow } from 'date-fns';
@@ -250,6 +250,14 @@ interface TradeDetailsModalProps {
   canEdit: boolean;
   canDelete: boolean;
   deleteLoading: boolean;
+  onReport?: () => void;
+}
+
+interface ReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reportData: { reason: string; description: string; tradeId: string }) => Promise<void>;
+  tradeId: string;
 }
 
 // Image Modal Component
@@ -307,8 +315,109 @@ function ImageModal({ images, currentIndex, isOpen, onClose, onNext, onPrevious 
   );
 }
 
+// Report Modal Component
+function ReportModal({ isOpen, onClose, onSubmit, tradeId }: ReportModalProps) {
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportReason.trim()) return;
+
+    try {
+      setSubmitting(true);
+      await onSubmit({
+        reason: reportReason,
+        description: reportDescription,
+        tradeId
+      });
+      setReportReason('');
+      setReportDescription('');
+      onClose();
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reportReasons = [
+    'Spam or inappropriate content',
+    'Harassment or bullying',
+    'Scam or fraudulent activity',
+    'Copyright infringement',
+    'False information',
+    'Other'
+  ];
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Flag className="w-5 h-5 text-red-500" />
+            Report Trade
+          </DialogTitle>
+          <DialogDescription>
+            Help us keep the community safe by reporting inappropriate content.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="report-reason">Reason for report *</Label>
+            <Select value={reportReason} onValueChange={setReportReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {reportReasons.map((reason) => (
+                  <SelectItem key={reason} value={reason}>
+                    {reason}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="report-description">Additional details (optional)</Label>
+            <Textarea
+              id="report-description"
+              placeholder="Provide more context about this report..."
+              value={reportDescription}
+              onChange={(e) => setReportDescription(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!reportReason.trim() || submitting} className="bg-red-500 hover:bg-red-600 text-white">
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Flag className="w-4 h-4 mr-2" />
+                  Submit Report
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Enhanced Trade Details Modal Component with upvote/downvote and comments
-function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading }: TradeDetailsModalProps) {
+function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport }: TradeDetailsModalProps) {
   const [comments, setComments] = useState<TradeComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -735,6 +844,19 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
         </DialogBody>
 
         <DialogFooter>
+          {/* Report Button - Always visible for logged-in users */}
+          {apiService.isAuthenticated() && onReport && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReport}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+            >
+              <Flag className="w-4 h-4 mr-2" />
+              Report
+            </Button>
+          )}
+
           {canEdit ? (
             <>
               <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
@@ -835,6 +957,9 @@ export function TradingHub() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const [statusUpdateLoading, setStatusUpdateLoading] = useState<string | null>(null);
+
+  // Report modal state
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const loadTrades = useCallback(async () => {
     try {
@@ -1216,6 +1341,36 @@ export function TradingHub() {
       toast.error('Failed to reopen trade');
     } finally {
       setStatusUpdateLoading(null);
+    }
+  };
+
+  const handleReportTrade = () => {
+    setIsReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async (reportData: { reason: string; description: string; tradeId: string }) => {
+    try {
+      // Map frontend reason strings to backend enum values
+      const reasonMapping: Record<string, 'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'> = {
+        'Spam or inappropriate content': 'Inappropriate Content',
+        'Harassment or bullying': 'Harassment',
+        'Scam or fraudulent activity': 'Scamming',
+        'Copyright infringement': 'Other',
+        'False information': 'Other',
+        'Other': 'Other'
+      };
+
+      await apiService.createReport({
+        post_id: reportData.tradeId,
+        post_type: 'trade',
+        reason: reportData.description || reportData.reason, // Use description as reason if provided, otherwise use the selected reason
+        type: reasonMapping[reportData.reason] || 'Other'
+      });
+      toast.success('Report submitted successfully');
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      toast.error('Failed to submit report');
+      throw error; // Re-throw to let the modal handle it
     }
   };
 
@@ -2065,6 +2220,7 @@ export function TradingHub() {
         canEdit={selectedTrade ? canEditTrade(selectedTrade) : false}
         canDelete={selectedTrade ? canDeleteTrade(selectedTrade) : false}
         deleteLoading={selectedTrade ? deleteLoading === selectedTrade.trade_id : false}
+        onReport={handleReportTrade}
       />
 
       <ImageModal
@@ -2074,6 +2230,13 @@ export function TradingHub() {
         onClose={() => setIsImageModalOpen(false)}
         onNext={handleNextImage}
         onPrevious={handlePreviousImage}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSubmit={handleSubmitReport}
+        tradeId={selectedTrade?.trade_id || ''}
       />
 
       {/* Pagination Controls */}

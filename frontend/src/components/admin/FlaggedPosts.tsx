@@ -12,7 +12,8 @@ import { toast } from 'sonner';
 import { AlertTriangle, Eye, CheckCircle, Trash2, Download, Search, Filter, ShieldAlert, ShieldX } from 'lucide-react';
 
 interface Report {
-  id: string;
+  id?: string;
+  _id?: string;
   type: string;
   post_type: string;
   post_id: string;
@@ -139,7 +140,7 @@ export function FlaggedPosts() {
 
     try {
       setResolving(true);
-      await apiService.updateReportStatusAdmin(selectedReport.id, status, reviewNotes.trim() || undefined);
+      await apiService.updateReportStatusAdmin(selectedReport._id || selectedReport.id!, status, reviewNotes.trim() || undefined);
 
       toast.success(`Report ${status} successfully`);
       setIsResolveModalOpen(false);
@@ -424,7 +425,7 @@ export function FlaggedPosts() {
               </thead>
               <tbody>
                 {reports.map((report) => (
-                  <tr key={report.id} className="border-b hover:bg-muted/50">
+                  <tr key={report._id || report.id} className="border-b hover:bg-muted/50">
                     <td className="p-3">
                       <Badge variant="outline">{report.type}</Badge>
                     </td>
@@ -500,7 +501,7 @@ export function FlaggedPosts() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteReport(report.id)}
+                          onClick={() => handleDeleteReport(report._id || report.id!)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />
