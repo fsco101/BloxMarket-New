@@ -142,6 +142,92 @@ interface ImageViewerProps {
   currentIndex: number;
   onNext: () => void;
   onPrevious: () => void;
+  onSetIndex: (index: number) => void;
+}
+
+// ImageViewer Component
+function ImageViewer({ images, currentIndex, onNext, onPrevious, onSetIndex }: ImageViewerProps) {
+  const currentImage = images[currentIndex];
+  const hasMultipleImages = images.length > 1;
+
+  return (
+    <div className="relative h-full flex items-center justify-center">
+      {/* Main Image */}
+      <ImageDisplay
+        src={currentImage.url}
+        alt={`Post image ${currentIndex + 1}`}
+        className="max-w-full max-h-full object-contain"
+        fallback={
+          <div className="flex items-center justify-center h-full text-white/70">
+            <div className="text-center">
+              <ImageIcon className="w-16 h-16 mx-auto mb-4" />
+              <p>Image unavailable</p>
+            </div>
+          </div>
+        }
+      />
+
+      {/* Navigation Arrows - Only show if multiple images */}
+      {hasMultipleImages && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrevious();
+            }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors z-10"
+            disabled={images.length <= 1}
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onNext();
+            }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors z-10"
+            disabled={images.length <= 1}
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
+
+      {/* Image Counter */}
+      {hasMultipleImages && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+          {currentIndex + 1} / {images.length}
+        </div>
+      )}
+
+      {/* Thumbnail Strip - Only show if multiple images */}
+      {hasMultipleImages && (
+        <div className="absolute bottom-6 left-6 right-6 flex justify-center gap-2">
+          <div className="flex gap-2 bg-black/50 rounded-lg p-2 max-w-full overflow-x-auto">
+            {images.map((image, index) => (
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetIndex(index);
+                }}
+                className={`flex-shrink-0 w-12 h-12 rounded border-2 overflow-hidden ${
+                  index === currentIndex ? 'border-white' : 'border-transparent'
+                }`}
+              >
+                <ImageDisplay
+                  src={image.url}
+                  alt={`Thumbnail ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  fallback={<div className="w-full h-full bg-gray-600 flex items-center justify-center text-xs text-white">?</div>}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Enhanced Image Display Component
@@ -513,7 +599,7 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
       } else if (error.message.includes('404')) {
         toast.error('Post not found');
       } else {
-        toast.error('Failed to update vote');
+        toast.error('You can not vote on your own trade');
       }
     } finally {
       setVotingLoading(false);
@@ -561,7 +647,7 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
       } else if (error.message.includes('404')) {
         toast.error('Post not found');
       } else {
-        toast.error('Failed to update vote');
+        toast.error('You can not vote on your own trade');
       }
     } finally {
       setVotingLoading(false);
@@ -645,6 +731,10 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
     }
   };
 
+  const handleSetImageIndex = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
   const handleUserClick = () => {
     onUserClick(post.id);
     onClose();
@@ -669,6 +759,7 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                 currentIndex={currentImageIndex}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
+                onSetIndex={handleSetImageIndex}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-white/70">
@@ -830,14 +921,19 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                     <div key={comment.comment_id || comment.id} className="flex gap-5">
                       <Avatar className="w-12 h-12">
                         <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-base font-semibold">
-                          {(comment.username || 'U')[0].toUpperCase()}
+                          {(comment.user?.username || comment.username || 'U')[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="bg-muted/50 rounded-xl p-5">
                           <div className="flex items-center gap-4 mb-3">
-                            <span className="font-semibold text-base">{comment.username}</span>
-                            {comment.credibility_score && (
+                            <span className="font-semibold text-base">{comment.user?.username || comment.username}</span>
+                            {comment.user?.credibility_score && (
+                              <Badge variant="secondary" className="text-xs">
+                                {comment.user.credibility_score}★
+                              </Badge>
+                            )}
+                            {comment.credibility_score && !comment.user && (
                               <Badge variant="secondary" className="text-xs">
                                 {comment.credibility_score}★
                               </Badge>
