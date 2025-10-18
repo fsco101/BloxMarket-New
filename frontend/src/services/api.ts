@@ -1678,6 +1678,168 @@ class ApiService {
       }
     });
   }
+
+  // Report methods
+  async createReport(reportData: {
+    post_id: string;
+    post_type: 'trade' | 'forum' | 'event' | 'wishlist';
+    reason: string;
+    type?: 'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other';
+  }) {
+    return this.request('/reports', {
+      method: 'POST',
+      body: JSON.stringify(reportData)
+    });
+  }
+
+  async getReports(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    post_type?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const response = await this.request(`/reports?${queryParams.toString()}`);
+    return response;
+  }
+
+  async updateReportStatus(reportId: string, status: 'pending' | 'reviewed' | 'resolved', reviewNotes?: string) {
+    return this.request(`/reports/${reportId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status,
+        review_notes: reviewNotes
+      })
+    });
+  }
+
+  async deleteReport(reportId: string) {
+    return this.request(`/reports/${reportId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async getReportStats() {
+    return this.request('/reports/stats/overview');
+  }
+
+  // Reports datatable methods
+  async getReportsDataTable(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    type?: string;
+    post_type?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const response = await this.request(`/admin/datatables/reports?${queryParams.toString()}`);
+    return response;
+  }
+
+  async updateReportStatusAdmin(reportId: string, status: 'pending' | 'reviewed' | 'resolved', reviewNotes?: string) {
+    return await this.request(`/admin/datatables/reports/${reportId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status,
+        review_notes: reviewNotes
+      })
+    });
+  }
+
+  async deleteReportAdmin(reportId: string) {
+    return await this.request(`/admin/datatables/reports/${reportId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async bulkUpdateReportStatus(reportIds: string[], status: 'pending' | 'reviewed' | 'resolved', reviewNotes?: string) {
+    return await this.request('/admin/datatables/reports/bulk/status', {
+      method: 'POST',
+      body: JSON.stringify({ reportIds, status, review_notes: reviewNotes })
+    });
+  }
+
+  async getReportsStats() {
+    return await this.request('/admin/datatables/reports/stats');
+  }
+
+  async exportReportsCSV(filters?: Record<string, string>) {
+    const queryString = filters 
+      ? `?${new URLSearchParams(filters).toString()}` 
+      : '';
+    return this.request(`/admin/datatables/reports/export/csv${queryString}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/csv'
+      }
+    });
+  }
+
+  // Reports penalty methods
+  async issueUserPenalty(userId: string, penaltyType: 'warning' | 'suspension' | 'ban' | 'deactivation', reason: string, duration?: number) {
+    return await this.request(`/admin/datatables/users/${userId}/penalty`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: penaltyType,
+        reason,
+        ...(duration && { duration })
+      })
+    });
+  }
+
+  async banUserAdmin(userId: string, action: 'ban' | 'unban', reason?: string) {
+    return await this.request(`/admin/datatables/users/${userId}/ban`, {
+      method: 'POST',
+      body: JSON.stringify({ action, reason })
+    });
+  }
+
+  async updateUserStatusAdmin(userId: string, action: 'activate' | 'deactivate', reason?: string) {
+    return await this.request(`/admin/datatables/users/${userId}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ action, reason })
+    });
+  }
+
+  // Reports post deletion methods
+  async deleteReportedPost(postType: string, postId: string) {
+    const endpoints = {
+      trade: `/admin/datatables/trading-posts/${postId}`,
+      forum: `/admin/datatables/forum/${postId}`,
+      event: `/admin/datatables/events/${postId}`,
+      wishlist: `/admin/datatables/wishlists/${postId}`
+    };
+
+    const endpoint = endpoints[postType as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported post type: ${postType}`);
+    }
+
+    return await this.request(endpoint, {
+      method: 'DELETE'
+    });
+  }
 }
 
 export const apiService = new ApiService();

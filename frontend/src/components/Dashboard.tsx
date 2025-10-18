@@ -4,8 +4,10 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { 
@@ -132,6 +134,7 @@ interface PostModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUserClick: (userId: string) => void;
+  onReportClick: () => void;
 }
 
 interface ImageViewerProps {
@@ -195,70 +198,137 @@ function ImageDisplay({ src, alt, className, fallback }: ImageDisplayProps) {
   );
 }
 
-// New Image Viewer Component
-function ImageViewer({ images, currentIndex, onNext, onPrevious }: ImageViewerProps) {
-  if (!images || images.length === 0) return null;
+// New Report Modal Component
+function ReportModal({ post, isOpen, onClose }: { post: DashboardPost | null; isOpen: boolean; onClose: () => void }) {
+  const [reason, setReason] = useState('');
+  const [reportType, setReportType] = useState<'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'>('Other');
+  const [submitting, setSubmitting] = useState(false);
+
+  const reportTypes = [
+    { value: 'Scamming', label: 'Scamming' },
+    { value: 'Harassment', label: 'Harassment' },
+    { value: 'Inappropriate Content', label: 'Inappropriate Content' },
+    { value: 'Spam', label: 'Spam' },
+    { value: 'Impersonation', label: 'Impersonation' },
+    { value: 'Other', label: 'Other' }
+  ];
+
+  const handleSubmit = async () => {
+    if (!post || !reason.trim() || submitting) return;
+
+    try {
+      setSubmitting(true);
+      await apiService.createReport({
+        post_id: post.id,
+        post_type: post.type as 'trade' | 'forum' | 'event' | 'wishlist',
+        reason: reason.trim(),
+        type: reportType
+      });
+
+      toast.success('Report submitted successfully');
+      setReason('');
+      setReportType('Other');
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to submit report:', error);
+      if (error.message?.includes('already reported')) {
+        toast.error('You have already reported this post');
+      } else {
+        toast.error('Failed to submit report. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (!submitting) {
+      setReason('');
+      setReportType('Other');
+      onClose();
+    }
+  };
+
+  if (!post) return null;
 
   return (
-    <div className="relative bg-black rounded-lg overflow-hidden h-full flex items-center justify-center">
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={onPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <button
-            onClick={onNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-        </>
-      )}
-      
-      <img
-        src={images[currentIndex].url}
-        alt={`Image ${currentIndex + 1}`}
-        className="max-w-full max-h-full object-contain"
-        crossOrigin="anonymous"
-        referrerPolicy="no-referrer"
-      />
-      
-      {images.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-          {currentIndex + 1} / {images.length}
-        </div>
-      )}
-      
-      {/* Image navigation dots */}
-      {images.length > 1 && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
-          {images.map((_, index) => (
-            <button
-              key={index}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === currentIndex ? 'bg-white' : 'bg-white/50'
-              }`}
-              onClick={() => {
-                const diff = index - currentIndex;
-                if (diff > 0) {
-                  for (let i = 0; i < diff; i++) onNext();
-                } else if (diff < 0) {
-                  for (let i = 0; i < Math.abs(diff); i++) onPrevious();
-                }
-              }}
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Flag className="w-5 h-5 text-red-500" />
+            Report Post
+          </DialogTitle>
+          <DialogDescription>
+            Help us keep the community safe by reporting inappropriate content.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="report-type" className="text-sm font-medium">
+              Report Type
+            </Label>
+            <Select value={reportType} onValueChange={(value: any) => setReportType(value)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select report type" />
+              </SelectTrigger>
+              <SelectContent>
+                {reportTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="reason" className="text-sm font-medium">
+              Reason for Report
+            </Label>
+            <Textarea
+              id="reason"
+              placeholder="Please provide details about why you're reporting this post..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="mt-1 min-h-[100px]"
+              disabled={submitting}
             />
-          ))}
+          </div>
+
+          <div className="text-sm text-muted-foreground">
+            <p>Post: <span className="font-medium">{post.title}</span></p>
+            <p>Type: <span className="capitalize font-medium">{post.type}</span></p>
+          </div>
         </div>
-      )}
-    </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!reason.trim() || submitting}
+            className="bg-red-500 hover:bg-red-600"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              'Submit Report'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 // New Post Modal Component with unified voting system
-function PostModal({ post, isOpen, onClose, onUserClick }: PostModalProps) {
+function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<any[]>([]);
@@ -733,7 +803,11 @@ function PostModal({ post, isOpen, onClose, onUserClick }: PostModalProps) {
                     Share
                   </Button>
                 </div>
-                <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-red-500 px-4 py-3">
+                <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-red-500 px-4 py-3"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReportClick();
+                  }}>
                   <Flag className="w-6 h-6" />
                 </Button>
               </div>
@@ -847,6 +921,7 @@ export function Dashboard() {
   });
   const [selectedPost, setSelectedPost] = useState<DashboardPost | null>(null);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const handleUserClick = (userId: string) => {
     toast.info(`Viewing profile for user: ${userId}`, {
@@ -1564,6 +1639,14 @@ export function Dashboard() {
         isOpen={isPostModalOpen}
         onClose={handleCloseModal}
         onUserClick={handleUserClick}
+        onReportClick={() => setIsReportModalOpen(true)}
+      />
+
+      {/* Report Modal */}
+      <ReportModal
+        post={selectedPost}
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
       />
     </div>
   );

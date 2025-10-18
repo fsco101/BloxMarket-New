@@ -30,6 +30,7 @@ import eventRoutes from './routes/events.js';
 import adminRoutes from './routes/admin.js';
 import uploadsRoutes from './routes/uploads.js';
 import verificationRoutes from './routes/verification.js';
+import reportRoutes from './routes/reports.js';
 import userDatatableRoutes from './routes/datatables/userDatatableRoutes.js';
 import eventsDatatableRoutes from './routes/datatables/eventsDatatableRoutes.js';
 import forumDatatableRoutes from './routes/datatables/forumDatatableRoutes.js';
@@ -38,6 +39,7 @@ import tradingPostDatatableRoutes from './routes/datatables/tradingPostDatatable
 // Import wishlist routes
 import wishlistRoutes from './routes/wishlist.js';
 import wishlistDatatableRoutes from './routes/datatables/wishlistDatatableRoutes.js';
+import reportsDatatableRoutes from './routes/datatables/reportsDatatableRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -167,6 +169,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', sensitiveOpLimiter, adminRoutes); // Stricter limit for admin operations
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/verification', sensitiveOpLimiter, verificationRoutes); // Stricter for verification
+app.use('/api/reports', reportRoutes); // Add report routes
 app.use('/api/admin/datatables', userDatatableRoutes);
 app.use('/api/wishlists', wishlistRoutes); // Add this line
 
@@ -185,6 +188,7 @@ app.use('/api/admin/datatables/events', datatableLimiter, eventsDatatableRoutes)
 app.use('/api/admin/datatables/forum', datatableLimiter, forumDatatableRoutes);
 app.use('/api/admin/datatables/trading-posts', datatableLimiter, tradingPostDatatableRoutes);
 app.use('/api/admin/datatables/wishlists', datatableLimiter, wishlistDatatableRoutes);
+app.use('/api/admin/datatables/reports', datatableLimiter, reportsDatatableRoutes);
 
 // Health check endpoint with rate limit info
 app.get('/api/health', (req, res) => {

@@ -13,7 +13,12 @@ const reportSchema = new mongoose.Schema({
   },
   post_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'ForumPost'
+    required: true
+  },
+  post_type: {
+    type: String,
+    enum: ['trade', 'forum', 'event', 'wishlist'],
+    required: true
   },
   reason: {
     type: String,
@@ -29,9 +34,22 @@ const reportSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'reviewed', 'resolved'],
     default: 'pending'
+  },
+  reviewed_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  review_notes: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true
 });
+
+// Add indexes for better query performance
+reportSchema.index({ post_id: 1, post_type: 1 });
+reportSchema.index({ status: 1 });
+reportSchema.index({ reported_by_user_id: 1 });
 
 export const Report = mongoose.model('Report', reportSchema);
