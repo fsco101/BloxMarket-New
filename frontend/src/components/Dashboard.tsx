@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { ContentCard, UniversalCardHeader, UniversalCardContent } from './ui/universal-layout';
 import { 
   MessageSquare, 
   Flag, 
@@ -28,7 +29,6 @@ import {
   ChevronRight,
   Send,
   MoreHorizontal,
-  Share,
   User,
   ArrowUp,
   ArrowDown
@@ -320,7 +320,7 @@ function ReportModal({ post, isOpen, onClose }: { post: DashboardPost | null; is
       if (error.message?.includes('already reported')) {
         toast.error('You have already reported this post');
       } else {
-        toast.error('Failed to submit report. Please try again.');
+        toast.error('You cannot report your own post.');
       }
     } finally {
       setSubmitting(false);
@@ -889,17 +889,20 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                     <MessageSquare className="w-6 h-6 mr-3" />
                     {comments.length}
                   </Button>
-                  <Button variant="ghost" size="lg" className="text-muted-foreground text-base px-4 py-3">
-                    <Share className="w-6 h-6 mr-3" />
-                    Share
-                  </Button>
                 </div>
-                <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-red-500 px-4 py-3"
+                <Button 
+                  variant="ghost" 
+                  size="lg" 
+                  className="text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 px-4 py-3 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onReportClick();
-                  }}>
-                  <Flag className="w-6 h-6" />
+                  }}
+                  title="Report this post for violating community guidelines"
+                  aria-label="Report post"
+                >
+                  <Flag className="w-5 h-5 mr-2" />
+                  <span className="hidden sm:inline">Report</span>
                 </Button>
               </div>
             </div>
@@ -948,10 +951,6 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                             </span>
                           </div>
                           <p className="text-base leading-relaxed">{comment.content}</p>
-                        </div>
-                        <div className="flex items-center gap-8 mt-3 text-sm text-muted-foreground">
-                          <button className="hover:text-foreground transition-colors font-medium">Like</button>
-                          <button className="hover:text-foreground transition-colors font-medium">Reply</button>
                         </div>
                       </div>
                     </div>
@@ -1220,132 +1219,60 @@ export function Dashboard() {
             event.status === 'active' || event.status === 'upcoming'
           ).length;
           
-          // Process events with vote and comment counts like in EventsGiveaways
-          const eventsWithCounts = await Promise.all(typedEventsArray.map(async (event) => {
+          // Process events WITHOUT loading individual vote/comment counts to avoid rate limiting
+          // These will be loaded lazily when the user opens a post modal
+          typedEventsArray.forEach((event) => {
+            let timestamp = 'Recently';
             try {
-              const [voteResponse, commentResponse] = await Promise.allSettled([
-                apiService.getEventVotes(event._id),
-                apiService.getEventComments(event._id)
-              ]);
-
-              let upvotes = 0, downvotes = 0, comment_count = 0;
-
-              if (voteResponse.status === 'fulfilled') {
-                upvotes = voteResponse.value.upvotes || 0;
-                downvotes = voteResponse.value.downvotes || 0;
+              if (event.createdAt) {
+                timestamp = new Date(event.createdAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
               }
-
-              if (commentResponse.status === 'fulfilled') {
-                comment_count = commentResponse.value.comments?.length || 0;
-              }
-
-              let timestamp = 'Recently';
-              try {
-                if (event.createdAt) {
-                  timestamp = new Date(event.createdAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  });
-                }
-              } catch {
-                console.warn('Invalid date format for event:', event._id);
-              }
-
-              // Process event images
-              let images: Array<{ url: string; type: 'trade' | 'forum' }> = [];
-              if (event.images && event.images.length > 0) {
-                images = event.images.map((img) => ({
-                  url: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${img.filename}`,
-                  type: 'forum' as const // Use 'forum' type for events since there's no 'event' type in the union
-                }));
-              }
-
-              return {
-                id: event._id,
-                type: 'event',
-                title: event.title,
-                description: event.description || 'Check out this community event!',
-                user: {
-                  username: event.creator?.username || 'Event Host',
-                  rating: 5,
-                  vouchCount: 999,
-                  verified: event.creator?.verified || true,
-                  moderator: true
-                },
-                timestamp,
-                comments: comment_count,
-                upvotes: upvotes,
-                downvotes: downvotes,
-                images,
-                // Add event-specific data
-                prizes: event.prizes,
-                requirements: event.requirements,
-                eventType: event.type,
-                eventStatus: event.status,
-                startDate: event.startDate,
-                endDate: event.endDate,
-                maxParticipants: event.maxParticipants,
-                participantCount: event.participantCount
-              };
-            } catch (error) {
-              console.error('Failed to load counts for event:', event._id, error);
-              let timestamp = 'Recently';
-              try {
-                if (event.createdAt) {
-                  timestamp = new Date(event.createdAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  });
-                }
-              } catch {
-                console.warn('Invalid date format for event:', event._id);
-              }
-
-              // Process event images even if counts fail
-              let images: Array<{ url: string; type: 'trade' | 'forum' }> = [];
-              if (event.images && event.images.length > 0) {
-                images = event.images.map((img) => ({
-                  url: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${img.filename}`,
-                  type: 'forum' as const
-                }));
-              }
-
-              return {
-                id: event._id,
-                type: 'event',
-                title: event.title,
-                description: event.description || 'Check out this community event!',
-                user: {
-                  username: event.creator?.username || 'Event Host',
-                  rating: 5,
-                  vouchCount: 999,
-                  verified: event.creator?.verified || true,
-                  moderator: true
-                },
-                timestamp,
-                comments: 0,
-                upvotes: 0,
-                downvotes: 0,
-                images,
-                // Add event-specific data
-                prizes: event.prizes,
-                requirements: event.requirements,
-                eventType: event.type,
-                eventStatus: event.status,
-                startDate: event.startDate,
-                endDate: event.endDate,
-                maxParticipants: event.maxParticipants,
-                participantCount: event.participantCount
-              };
+            } catch {
+              console.warn('Invalid date format for event:', event._id);
             }
-          }));
 
-          // Cast the events to DashboardPost before pushing to allPosts
-          allPosts.push(...(eventsWithCounts as DashboardPost[]));
+            // Process event images
+            let images: Array<{ url: string; type: 'trade' | 'forum' }> = [];
+            if (event.images && event.images.length > 0) {
+              images = event.images.map((img) => ({
+                url: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${img.filename}`,
+                type: 'forum' as const // Use 'forum' type for events since there's no 'event' type in the union
+              }));
+            }
+
+            allPosts.push({
+              id: event._id,
+              type: 'event',
+              title: event.title,
+              description: event.description || 'Check out this community event!',
+              user: {
+                username: event.creator?.username || 'Event Host',
+                rating: 5,
+                vouchCount: 999,
+                verified: event.creator?.verified || true,
+                moderator: true
+              },
+              timestamp,
+              comments: 0, // Will be loaded lazily
+              upvotes: 0,   // Will be loaded lazily
+              downvotes: 0, // Will be loaded lazily
+              images,
+              // Add event-specific data
+              prizes: event.prizes,
+              requirements: event.requirements,
+              eventType: event.type,
+              eventStatus: event.status,
+              startDate: event.startDate,
+              endDate: event.endDate,
+              maxParticipants: event.maxParticipants,
+              participantCount: event.participantCount
+            });
+          });
         }
 
         // Sort posts by timestamp
@@ -1505,204 +1432,128 @@ export function Dashboard() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
           {filteredPosts.map((post) => (
-            <Card 
-              key={post.id} 
+            <ContentCard
+              key={post.id}
               className="relative hover:shadow-lg transition-shadow duration-200 cursor-pointer"
               onClick={() => handlePostClick(post)}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUserClick(post.user.username);
-                      }}
-                      className="flex items-center gap-3 hover:bg-muted/50 rounded-lg p-1 transition-colors"
-                    >
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                          {post.user.username[0]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{post.user.username}</span>
-                          {post.user.verified && (
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                              ✓ Verified
-                            </Badge>
-                          )}
-                          {post.user.moderator && (
-                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
-                              MOD
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>@{post.user.robloxUsername || post.user.username}</span>
-                          <span>•</span>
-                          <div className="flex items-center gap-1">
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={`w-3 h-3 ${i < post.user.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                              ))}
-                            </div>
-                            <span>({post.user.vouchCount})</span>
-                          </div>
-                          <span>•</span>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{post.timestamp}</span>
+              <UniversalCardHeader
+                avatar={
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                      {post.user.username[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                }
+                title={post.user.username}
+                subtitle={`@${post.user.robloxUsername || post.user.username}`}
+                badges={[
+                  ...(post.user.verified ? [<Badge key="verified" variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">✓ Verified</Badge>] : []),
+                  ...(post.user.moderator ? [<Badge key="mod" variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">MOD</Badge>] : [])
+                ]}
+                timestamp={post.timestamp}
+                actions={
+                  <Badge className={`${getPostTypeColor(post.type)} text-white`}>
+                    {getPostTypeIcon(post.type)}
+                    <span className="ml-1 capitalize">{post.type}</span>
+                  </Badge>
+                }
+                onUserClick={() => handleUserClick(post.user.username)}
+              />
+
+              <UniversalCardContent
+                description={`${post.title}\n\n${post.description}`}
+                images={
+                  post.images && post.images.length > 0 ? (
+                    <div className="space-y-3">
+                      {post.images.length === 1 ? (
+                        <div className="rounded-lg overflow-hidden relative group">
+                          <ImageDisplay
+                            src={post.images[0].url}
+                            alt={`${post.type} image`}
+                            className="w-full h-48"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <Eye className="w-8 h-8 text-white" />
                           </div>
                         </div>
-                      </div>
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Badge className={`${getPostTypeColor(post.type)} text-white`}>
-                      {getPostTypeIcon(post.type)}
-                      <span className="ml-1 capitalize">{post.type}</span>
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">{post.title}</h3>
-                  <p className="text-muted-foreground">{post.description}</p>
-                </div>
-
-                {/* Enhanced Image Display - Show preview */}
-                {post.images && post.images.length > 0 && (
-                  <div className="space-y-3">
-                    {post.images.length === 1 ? (
-                      <div className="rounded-lg overflow-hidden relative group">
-                        <ImageDisplay
-                          src={post.images[0].url}
-                          alt={`${post.type} image`}
-                          className="w-full h-48"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Eye className="w-8 h-8 text-white" />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <ImageIcon className="w-4 h-4" />
-                          <span>{post.images.length} images</span>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {post.images.slice(0, 6).map((image, index) => (
-                            <div key={index} className="aspect-square overflow-hidden rounded-lg border hover:shadow-md transition-shadow cursor-pointer group">
-                              <div className="relative w-full h-full">
-                                <ImageDisplay
-                                  src={image.url}
-                                  alt={`${post.type} image ${index + 1}`}
-                                  className="w-full h-full"
-                                />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                  <Eye className="w-5 h-5 text-white" />
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <ImageIcon className="w-4 h-4" />
+                            <span>{post.images.length} images</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {post.images.slice(0, 6).map((image, index) => (
+                              <div key={index} className="aspect-square overflow-hidden rounded-lg border hover:shadow-md transition-shadow cursor-pointer group">
+                                <div className="relative w-full h-full">
+                                  <ImageDisplay
+                                    src={image.url}
+                                    alt={`${post.type} image ${index + 1}`}
+                                    className="w-full h-full"
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                    <Eye className="w-5 h-5 text-white" />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                          {post.images.length > 6 && (
-                            <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow">
-                              <div className="text-center text-gray-500 dark:text-gray-400">
-                                <ImageIcon className="w-6 h-6 mx-auto mb-1" />
-                                <span className="text-xs">+{post.images.length - 6} more</span>
+                            ))}
+                            {post.images.length > 6 && (
+                              <div className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg border flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow">
+                                <div className="text-center text-gray-500 dark:text-gray-400">
+                                  <ImageIcon className="w-6 h-6 mx-auto mb-1" />
+                                  <span className="text-xs">+{post.images.length - 6} more</span>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Trade Details */}
-                {post.type === 'trade' && (
-                  <div className="flex flex-wrap gap-4 p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <span className="text-sm text-muted-foreground">Offering:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {post.items?.map((item, i) => (
-                          <Badge key={i} variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
-                            {item}
-                          </Badge>
-                        ))}
-                      </div>
+                      )}
                     </div>
-                    {post.wantedItems && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Looking for:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {post.wantedItems?.map((item, i) => (
-                            <Badge key={i} variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                              {item}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {post.status && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Status:</span>
-                        <Badge variant="outline" className={`ml-1 ${
-                          post.status === 'open' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' :
-                          post.status === 'completed' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
-                          'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300'
-                        }`}>
-                          {post.status}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Forum Details */}
-                {post.type === 'forum' && post.category && (
-                  <div className="p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Category:</span>
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                        {post.category.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions - Updated to show upvotes/downvotes for all posts */}
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <ArrowUp className="w-4 h-4 text-green-600" />
-                      <span>{post.upvotes || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <ArrowDown className="w-4 h-4 text-red-600" />
-                      <span>{post.downvotes || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <MessageSquare className="w-4 h-4" />
-                      <span>{post.comments}</span>
-                    </div>
-                  </div>
-                  
+                  ) : undefined
+                }
+                metadata={[
+                  { icon: <ArrowUp className="w-4 h-4 text-green-600" />, label: "upvotes", value: post.upvotes || 0 },
+                  { icon: <ArrowDown className="w-4 h-4 text-red-600" />, label: "downvotes", value: post.downvotes || 0 },
+                  { icon: <MessageSquare className="w-4 h-4" />, label: "comments", value: post.comments }
+                ]}
+                tags={[
+                  ...(post.type === 'trade' && post.items ? post.items.map((item, i) => (
+                    <Badge key={`offering-${i}`} variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+                      {item}
+                    </Badge>
+                  )) : []),
+                  ...(post.type === 'trade' && post.wantedItems ? post.wantedItems.map((item, i) => (
+                    <Badge key={`wanted-${i}`} variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                      {item}
+                    </Badge>
+                  )) : []),
+                  ...(post.type === 'trade' && post.status ? [
+                    <Badge key="status" variant="outline" className={`${
+                      post.status === 'open' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' :
+                      post.status === 'completed' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                      'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300'
+                    }`}>
+                      {post.status}
+                    </Badge>
+                  ] : []),
+                  ...(post.type === 'forum' && post.category ? [
+                    <Badge key="category" variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                      {post.category.replace('_', ' ').toUpperCase()}
+                    </Badge>
+                  ] : [])
+                ]}
+                actions={
                   <div className="flex items-center gap-2">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="bg-blue-500 hover:bg-blue-600 text-white"
                       onClick={(e) => e.stopPropagation()}
                     >
                       Message
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -1710,9 +1561,9 @@ export function Dashboard() {
                       Vouch
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                }
+              />
+            </ContentCard>
           ))}
 
           {filteredPosts.length === 0 && (

@@ -62,7 +62,11 @@ export const verificationController = {
       
       const applications = await MiddlemanApplication.find(query)
         .populate('user_id', 'username email roblox_username avatar_url credibility_score')
-        .populate('documents')
+        .populate({
+          path: 'documents',
+          select: '_id document_type filename original_filename file_path mime_type file_size description status createdAt',
+          match: { is_deleted: { $ne: true } } // Only get non-deleted documents
+        })
         .sort({ createdAt: -1 })
         .skip((options.page - 1) * options.limit)
         .limit(options.limit);

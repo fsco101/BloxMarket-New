@@ -11,9 +11,9 @@ const apiTimestamps = {
 
 // Minimum wait times between requests (in milliseconds)
 const minWaitTimes = {
-  auth: 2000, // 2 seconds between auth requests
-  standard: 500, // 0.5 seconds between standard requests
-  heavy: 5000 // 5 seconds between heavy requests (like file uploads)
+  auth: 1000, // 1 second between auth requests (reduced from 2000)
+  standard: 200, // 0.2 seconds between standard requests (reduced from 500)
+  heavy: 2000 // 2 seconds between heavy requests (reduced from 5000)
 };
 
 /**
@@ -54,7 +54,7 @@ export function shouldThrottle(
  * @param category Type of request: 'auth', 'standard', or 'heavy'
  * @returns A throttled version of the function that will wait if called too frequently
  */
-export function createThrottledFunction<T extends (...args: any[]) => Promise<any>>(
+export function createThrottledFunction<T extends (...args: unknown[]) => Promise<unknown>>(
   func: T,
   key: string,
   category: 'auth' | 'standard' | 'heavy' = 'standard'

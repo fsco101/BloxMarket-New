@@ -75,7 +75,7 @@ const createRateLimitHandler = (message, windowMs) => {
 // Standard limiter for general API requests
 const standardLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // limit each IP to 500 requests per windowMs (increased from 100)
+  max: 1000, // limit each IP to 1000 requests per windowMs (increased from 500)
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   handler: createRateLimitHandler('Too many requests, please try again later.', 15 * 60 * 1000),
@@ -85,7 +85,7 @@ const standardLimiter = rateLimit({
 // Strict limiter for authentication routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // limit each IP to 50 requests per windowMs for auth endpoints
+  max: 100, // limit each IP to 100 requests per windowMs for auth endpoints (increased from 50)
   standardHeaders: true,
   legacyHeaders: false,
   handler: createRateLimitHandler('Too many login attempts, please try again later.', 15 * 60 * 1000),
@@ -95,7 +95,7 @@ const authLimiter = rateLimit({
 // Very strict limiter for sensitive operations
 const sensitiveOpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // limit each IP to 10 requests per hour
+  max: 50, // limit each IP to 50 requests per hour (increased from 10)
   standardHeaders: true,
   legacyHeaders: false,
   handler: createRateLimitHandler('Too many sensitive operations attempted, please try again later.', 60 * 60 * 1000),
@@ -176,7 +176,7 @@ app.use('/api/wishlists', wishlistRoutes); // Add this line
 // Custom rate limiter for datatable endpoints (which can be resource-intensive)
 const datatableLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 50, // 50 requests per 5 minutes
+  max: 200, // 200 requests per 5 minutes (increased from 50)
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many datatable requests, please try again later.' },
@@ -195,22 +195,22 @@ app.get('/api/health', (req, res) => {
   // Get rate limit info from req if available
   const rateLimitInfo = {
     standard: {
-      limit: 500,
+      limit: 1000,
       windowMs: 15 * 60 * 1000,
       windowMinutes: 15
     },
     auth: {
-      limit: 50,
+      limit: 100,
       windowMs: 15 * 60 * 1000,
       windowMinutes: 15
     },
     sensitive: {
-      limit: 10,
+      limit: 50,
       windowMs: 60 * 60 * 1000,
       windowMinutes: 60
     },
     datatables: {
-      limit: 50,
+      limit: 200,
       windowMs: 5 * 60 * 1000,
       windowMinutes: 5
     }

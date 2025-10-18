@@ -68,6 +68,35 @@ export function MiddlemanVerification() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  const handleViewDocument = async (documentId: string) => {
+    try {
+      // Fetch the document with authentication
+      const response = await fetch(`http://localhost:5000/api/verification/documents/${documentId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('bloxmarket-token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch document');
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Open the document in a new tab for viewing
+      window.open(url, '_blank');
+      
+      toast.success('Document opened in new tab');
+    } catch (error) {
+      console.error('Error viewing document:', error);
+      toast.error('Failed to view document');
+    }
+  };
+
   const loadVerificationRequests = async () => {
     try {
       setLoading(true);
@@ -447,7 +476,7 @@ export function MiddlemanVerification() {
                           size="sm" 
                           variant="outline" 
                           className="mt-2 text-xs h-7 w-full"
-                          onClick={() => window.open(`http://localhost:5000/api/verification/documents/${doc._id}`, '_blank')}
+                          onClick={() => handleViewDocument(doc._id)}
                         >
                           <Eye className="w-3 h-3 mr-1" />
                           View Document
