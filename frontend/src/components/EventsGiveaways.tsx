@@ -539,10 +539,12 @@ function EventDetailsModal({
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span 
-                            className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                            className={`font-medium text-sm ${comment.user_id ? 'cursor-pointer hover:text-blue-600 transition-colors' : 'text-muted-foreground'}`}
                             onClick={(e) => {
-                              e.stopPropagation();
-                              onUserClick(comment.user_id);
+                              if (comment.user_id) {
+                                e.stopPropagation();
+                                onUserClick(comment.user_id);
+                              }
                             }}
                           >
                             {comment.username}

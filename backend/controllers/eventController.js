@@ -708,6 +708,7 @@ export const eventController = {
       const formattedComments = comments.map(comment => ({
         comment_id: comment._id,
         event_id: comment.event_id,
+        user_id: comment.user_id._id || comment.user_id,
         content: comment.content,
         created_at: comment.created_at,
         username: comment.user_id.username,
@@ -781,6 +782,7 @@ export const eventController = {
       const responseData = {
         comment_id: comment._id,
         event_id: comment.event_id,
+        user_id: comment.user_id._id || comment.user_id,
         content: comment.content,
         created_at: comment.created_at,
         username: comment.user_id.username,
