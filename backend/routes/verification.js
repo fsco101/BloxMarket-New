@@ -28,16 +28,17 @@ router.post('/apply', (req, res, next) => {
 // Get current user's application status
 router.get('/my-application', verificationController.getUserApplicationStatus);
 
+// Public routes (accessible by all authenticated users)
+router.get('/middlemen', verificationController.getActiveMiddlemen);
+
 // Routes that require admin privileges
 router.use(requireAdmin);
 
-// Admin routes for managing applications
+// Get all verification applications (admin only)
 router.get('/applications', verificationController.getApplications);
-router.get('/applications/:applicationId', verificationController.getApplicationById);
-router.post('/applications/:applicationId/review', verificationController.reviewApplication);
 
-// Public routes (accessible by all authenticated users)
-router.get('/middlemen', verificationController.getActiveMiddlemen);
+// Review application (approve/reject) - admin only
+router.post('/applications/:applicationId/review', verificationController.reviewApplication);
 
 // Access to documents (with security checks in the controller)
 router.get('/documents/:documentId', verificationController.getDocumentById);

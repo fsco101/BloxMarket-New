@@ -17,6 +17,7 @@ import {
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { MiddlemanApplicationForm } from './user/MiddlemanApplicationForm';
+import { useAuth } from '../App';
 
 // Define the Middleman interface
 interface Middleman {
@@ -39,14 +40,78 @@ interface Middleman {
   successRate: number;
 }
 
+// Define the API response interface
+interface MiddlemanApiResponse {
+  _id: string;
+  username: string;
+  roblox_username: string;
+  avatar_url?: string;
+  rating?: number;
+  vouches?: number;
+  trades?: number;
+  verificationDate?: string;
+  createdAt?: string;
+  is_active?: boolean;
+  fees?: string;
+  preferred_trade_types?: string[];
+  average_response_time?: string;
+  last_active?: string;
+  bio?: string;
+  success_rate?: number;
+}
+
 export function MiddlemanDirectory() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('rating');
 
   const [middlemen, setMiddlemen] = useState<Middleman[]>([]);
   const [loading, setLoading] = useState(true);
   const [isApplicationFormOpen, setIsApplicationFormOpen] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<null | {
+    status: string;
+    submittedAt: string;
+    reviewedAt?: string;
+    rejectionReason?: string;
+  }>(null);
   
+  // Check application status on component mount
+  useEffect(() => {
+    const checkApplicationStatus = async () => {
+      try {
+        const response = await apiService.getApplicationStatus();
+        setApplicationStatus(response);
+      } catch (error) {
+        // If no application found, that's fine - user can apply
+        if ((error as Error).message !== 'No application found') {
+          console.error('Error checking application status:', error);
+        }
+      }
+    };
+
+    if (user) {
+      checkApplicationStatus();
+    }
+  }, [user]);
+
+  // Determine if user can apply to be a middleman
+  const canApplyForMiddleman = () => {
+    // User must be logged in
+    if (!user) return false;
+
+    // User cannot be a middleman already
+    if (user.role === 'middleman') return false;
+
+    // User cannot have a pending application
+    if (applicationStatus?.status === 'pending') return false;
+
+    // User can apply if they have no application or their previous application was rejected
+    // OR if they were previously approved but are no longer a middleman (role was changed)
+    return !applicationStatus ||
+           applicationStatus.status === 'rejected' ||
+           (applicationStatus.status === 'approved' && user.role !== 'middleman');
+  };
+
   // Fetch actual middlemen data from the backend
   useEffect(() => {
     const fetchMiddlemen = async () => {
@@ -55,7 +120,7 @@ export function MiddlemanDirectory() {
         const response = await apiService.getMiddlemen();
         
         // Transform the data to match our component's expected format
-        const formattedMiddlemen = response.middlemen.map((mm: any) => ({
+        const formattedMiddlemen = response.middlemen.map((mm: MiddlemanApiResponse) => ({
           id: mm._id,
           username: mm.username,
           robloxUsername: mm.roblox_username,
@@ -185,12 +250,14 @@ export function MiddlemanDirectory() {
             <p className="text-muted-foreground">Verified middlemen to help secure your trades</p>
           </div>
           
-          <Button 
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-            onClick={() => setIsApplicationFormOpen(true)}
-          >
-            Apply to be a Middleman
-          </Button>
+          {canApplyForMiddleman() && (
+            <Button 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+              onClick={() => setIsApplicationFormOpen(true)}
+            >
+              Apply to be a Middleman
+            </Button>
+          )}
         </div>
       </div>
 
@@ -242,103 +309,114 @@ export function MiddlemanDirectory() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-6xl mx-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {sortedMiddlemen.map((mm) => (
-              <Card key={mm.id} className="hover:shadow-lg transition-all duration-200 relative">
-                {/* Status Indicator */}
-                <div className={`absolute top-4 right-4 w-3 h-3 rounded-full ${getStatusColor(mm.status)}`} />
-                
-                <CardHeader className="pb-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="w-16 h-16">
-                      <AvatarImage src={mm.avatar} />
-                      <AvatarFallback>{mm.username[0]}</AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg">{mm.username}</h3>
-                        {mm.verified && (
-                          <CheckCircle className="w-5 h-5 text-blue-500" />
-                        )}
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground mb-2">@{mm.robloxUsername}</p>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={getTierColor(mm.tier)}>
-                          <Award className="w-3 h-3 mr-1" />
-                          {mm.tier} tier
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {mm.fees} fees
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-1">
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={`w-4 h-4 ${i < mm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                          ))}
-                        </div>
-                        <span className="text-sm font-medium ml-1">{mm.rating}.0</span>
-                        <span className="text-sm text-muted-foreground">({mm.vouchCount} vouches)</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">{mm.description}</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mb-4 animate-spin">
+                  <Shield className="w-4 h-4 text-white animate-pulse" />
+                </div>
+                <p className="text-muted-foreground">Loading middlemen...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {sortedMiddlemen.map((mm) => (
+                <Card key={mm.id} className="hover:shadow-lg transition-all duration-200 relative">
+                  {/* Status Indicator */}
+                  <div className={`absolute top-4 right-4 w-3 h-3 rounded-full ${getStatusColor(mm.status)}`} />
                   
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <span className="text-xs text-muted-foreground">Completed Trades</span>
-                      <p className="font-semibold text-green-600 dark:text-green-400">{mm.completedTrades.toLocaleString()}</p>
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="w-16 h-16">
+                        <AvatarImage src={mm.avatar} />
+                        <AvatarFallback>{mm.username[0]}</AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-lg">{mm.username}</h3>
+                          {mm.verified && (
+                            <CheckCircle className="w-5 h-5 text-blue-500" />
+                          )}
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground mb-2">@{mm.robloxUsername}</p>
+                        
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={getTierColor(mm.tier)}>
+                            <Award className="w-3 h-3 mr-1" />
+                            {mm.tier} tier
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {mm.fees} fees
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`w-4 h-4 ${i < mm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                            ))}
+                          </div>
+                          <span className="text-sm font-medium ml-1">{mm.rating}.0</span>
+                          <span className="text-sm text-muted-foreground">({mm.vouchCount} vouches)</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-xs text-muted-foreground">Success Rate</span>
-                      <p className="font-semibold text-blue-600 dark:text-blue-400">{mm.successRate}%</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-muted-foreground">Response Time</span>
-                      <p className="font-semibold">{mm.responseTime}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-muted-foreground">Last Active</span>
-                      <p className="font-semibold">{mm.lastActive}</p>
-                    </div>
-                  </div>
+                  </CardHeader>
 
-                  {/* Specialties */}
-                  <div>
-                    <span className="text-sm text-muted-foreground mb-2 block">Specialties:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {mm.specialties.map((specialty, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {specialty}
-                        </Badge>
-                      ))}
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">{mm.description}</p>
+                    
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Completed Trades</span>
+                        <p className="font-semibold text-green-600 dark:text-green-400">{mm.completedTrades.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Success Rate</span>
+                        <p className="font-semibold text-blue-600 dark:text-blue-400">{mm.successRate}%</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Response Time</span>
+                        <p className="font-semibold">{mm.responseTime}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Last Active</span>
+                        <p className="font-semibold">{mm.lastActive}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2 border-t border-border">
-                    <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
-                      <MessageSquare className="w-3 h-3 mr-1" />
-                      Request Service
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      View Profile
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    {/* Specialties */}
+                    <div>
+                      <span className="text-sm text-muted-foreground mb-2 block">Specialties:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {mm.specialties.map((specialty, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {specialty}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
 
-          {sortedMiddlemen.length === 0 && (
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2 border-t border-border">
+                      <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                        <MessageSquare className="w-3 h-3 mr-1" />
+                        Request Service
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        View Profile
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!loading && sortedMiddlemen.length === 0 && (
             <Card className="text-center py-12">
               <CardContent>
                 <div className="text-muted-foreground">

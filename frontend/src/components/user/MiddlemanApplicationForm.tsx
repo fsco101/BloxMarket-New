@@ -4,10 +4,11 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { AlertCircle, CheckCircle, Upload, Shield, Info, FileText } from 'lucide-react';
+import { CheckCircle, Upload, Shield, Info, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { apiService } from '../../services/api';
 import { toast } from 'sonner';
+import { useAuth } from '../../App';
 
 interface MiddlemanApplicationFormProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface MiddlemanApplicationFormProps {
 }
 
 export function MiddlemanApplicationForm({ isOpen, onClose }: MiddlemanApplicationFormProps) {
+  const { user } = useAuth();
   const [experience, setExperience] = useState('');
   const [availability, setAvailability] = useState('');
   const [whyMiddleman, setWhyMiddleman] = useState('');
@@ -166,33 +168,39 @@ export function MiddlemanApplicationForm({ isOpen, onClose }: MiddlemanApplicati
         </DialogHeader>
 
         {/* If user has an existing application, show its status */}
-        {applicationStatus ? (
+        {applicationStatus && applicationStatus.status === 'pending' ? (
           <div className="space-y-6">
-            <Alert className={`
-              ${applicationStatus.status === 'pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : ''}
-              ${applicationStatus.status === 'approved' ? 'bg-green-50 border-green-200 text-green-800' : ''}
-              ${applicationStatus.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-800' : ''}
-            `}>
-              <div className="flex items-center gap-2">
-                {applicationStatus.status === 'pending' && <Info className="w-5 h-5" />}
-                {applicationStatus.status === 'approved' && <CheckCircle className="w-5 h-5" />}
-                {applicationStatus.status === 'rejected' && <AlertCircle className="w-5 h-5" />}
-                
-                <AlertTitle className="capitalize">{applicationStatus.status}</AlertTitle>
-              </div>
+            <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800">
+              <Info className="w-5 h-5" />
+              <AlertTitle>Application Under Review</AlertTitle>
               <AlertDescription className="mt-2">
-                {applicationStatus.status === 'pending' && 'Your application is currently under review by our team.'}
-                {applicationStatus.status === 'approved' && 'Congratulations! Your application has been approved.'}
-                {applicationStatus.status === 'rejected' && (
-                  <>
-                    Your application was not approved.
-                    {applicationStatus.rejectionReason && (
-                      <div className="mt-2 font-medium">
-                        Reason: {applicationStatus.rejectionReason}
-                      </div>
-                    )}
-                  </>
-                )}
+                Your application is currently under review by our team.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm text-muted-foreground">Submitted</Label>
+                <p>{new Date(applicationStatus.submittedAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={onClose}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : applicationStatus && applicationStatus.status === 'approved' && user?.role === 'middleman' ? (
+          <div className="space-y-6">
+            <Alert className="bg-green-50 border-green-200 text-green-800">
+              <CheckCircle className="w-5 h-5" />
+              <AlertTitle>Application Approved</AlertTitle>
+              <AlertDescription className="mt-2">
+                Congratulations! Your application has been approved and you are now a verified middleman.
               </AlertDescription>
             </Alert>
             
@@ -204,7 +212,7 @@ export function MiddlemanApplicationForm({ isOpen, onClose }: MiddlemanApplicati
               
               {applicationStatus.reviewedAt && (
                 <div>
-                  <Label className="text-sm text-muted-foreground">Reviewed</Label>
+                  <Label className="text-sm text-muted-foreground">Approved</Label>
                   <p>{new Date(applicationStatus.reviewedAt).toLocaleDateString()}</p>
                 </div>
               )}
@@ -220,7 +228,7 @@ export function MiddlemanApplicationForm({ isOpen, onClose }: MiddlemanApplicati
             </div>
           </div>
         ) : (
-          /* Show application form if no existing application */
+          /* Show application form for new applications, rejected applications, or approved users who lost middleman status */
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
               {/* Requirements Alert */}

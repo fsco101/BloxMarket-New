@@ -19,7 +19,7 @@ export const forumController = {
       }
 
       const posts = await ForumPost.find(query)
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username vouch_count')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -37,7 +37,7 @@ export const forumController = {
             downvotes: post.downvotes,
             created_at: post.createdAt,
             username: post.user_id.username,
-            credibility_score: post.user_id.credibility_score,
+            vouch_count: post.user_id.vouch_count,
             user_id: post.user_id._id,
             images: post.images || [],
             commentCount
@@ -64,7 +64,7 @@ export const forumController = {
       }
 
       const post = await ForumPost.findById(postId)
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username vouch_count')
         .lean();
 
       if (!post) {
@@ -73,7 +73,7 @@ export const forumController = {
 
       // Get comments for this post
       const comments = await ForumComment.find({ post_id: postId })
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username vouch_count')
         .sort({ createdAt: -1 })
         .lean();
 
@@ -93,14 +93,14 @@ export const forumController = {
         downvotes: post.downvotes || 0,
         created_at: post.createdAt,
         username: post.user_id.username,
-        credibility_score: post.user_id.credibility_score,
+        vouch_count: post.user_id.vouch_count,
         userVote: userVote ? userVote.vote_type : null,
         comments: comments.map(comment => ({
           comment_id: comment._id,
           content: comment.content,
           created_at: comment.createdAt,
           username: comment.user_id.username,
-          credibility_score: comment.user_id.credibility_score
+          vouch_count: comment.user_id.vouch_count
         }))
       };
 
@@ -466,14 +466,14 @@ export const forumController = {
       console.log('Comment saved:', comment._id);
 
       // Populate user data
-      await comment.populate('user_id', 'username credibility_score');
+      await comment.populate('user_id', 'username vouch_count');
 
       const responseData = {
         comment_id: comment._id,
         content: comment.content,
         created_at: comment.createdAt,
         username: comment.user_id.username,
-        credibility_score: comment.user_id.credibility_score
+        vouch_count: comment.user_id.vouch_count
       };
 
       console.log('Comment response:', responseData);
@@ -549,7 +549,7 @@ export const forumController = {
       }
 
       const posts = await ForumPost.find({ user_id: userId })
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username vouch_count')
         .sort({ createdAt: -1 })
         .lean();
 
@@ -567,7 +567,7 @@ export const forumController = {
             created_at: post.createdAt,
             updated_at: post.updatedAt || post.createdAt,
             username: post.user_id?.username,
-            credibility_score: post.user_id?.credibility_score ?? 0,
+            vouch_count: post.user_id?.vouch_count ?? 0,
             user_id: post.user_id?._id?.toString(),
             images: Array.isArray(post.images)
               ? post.images.map(img => ({

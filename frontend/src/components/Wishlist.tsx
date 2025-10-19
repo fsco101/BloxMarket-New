@@ -44,7 +44,7 @@ interface WishlistItem {
   updated_at?: string;
   user_id: string;
   username: string;
-  credibility_score: number;
+
   watchers?: number;
   comment_count?: number;
   upvotes?: number;
@@ -59,7 +59,7 @@ interface WishlistComment {
   content: string;
   created_at: string;
   username: string;
-  credibility_score?: number;
+
 }
 
 interface User {
@@ -319,9 +319,6 @@ function WishlistDetailsModal({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{wishlist.username}</span>
-                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                  {wishlist.credibility_score || 0}★
-                </Badge>
               </div>
               <div className="text-sm text-muted-foreground">
                 Posted on {new Date(wishlist.created_at).toLocaleDateString()} at {new Date(wishlist.created_at).toLocaleTimeString()}
@@ -520,11 +517,6 @@ function WishlistDetailsModal({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-sm">{comment.username}</span>
-                        {comment.credibility_score !== undefined && (
-                          <Badge variant="secondary" className="text-xs">
-                            {comment.credibility_score}★
-                          </Badge>
-                        )}
                         <span className="text-xs text-muted-foreground">
                           {new Date(comment.created_at).toLocaleDateString('en-US', {
                             month: 'short',
@@ -1629,9 +1621,6 @@ export function Wishlist() {
                       
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-medium text-sm">{item.username}</span>
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                          {item.credibility_score || 0}★
-                        </Badge>
                       </div>
                       
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">

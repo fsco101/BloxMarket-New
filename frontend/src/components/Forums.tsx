@@ -1641,9 +1641,6 @@ export function Forums() {
                       
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-medium text-sm">{post.username}</span>
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                          {post.credibility_score || 0}★
-                        </Badge>
                       </div>
                       
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">

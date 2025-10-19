@@ -40,6 +40,7 @@ import tradingPostDatatableRoutes from './routes/datatables/tradingPostDatatable
 import wishlistRoutes from './routes/wishlist.js';
 import wishlistDatatableRoutes from './routes/datatables/wishlistDatatableRoutes.js';
 import reportsDatatableRoutes from './routes/datatables/reportsDatatableRoutes.js';
+import vouchRoutes from './routes/vouches.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -172,6 +173,7 @@ app.use('/api/verification', sensitiveOpLimiter, verificationRoutes); // Stricte
 app.use('/api/reports', reportRoutes); // Add report routes
 app.use('/api/admin/datatables', userDatatableRoutes);
 app.use('/api/wishlists', wishlistRoutes); // Add this line
+app.use('/api/vouches', vouchRoutes); // Add vouches routes
 
 // Custom rate limiter for datatable endpoints (which can be resource-intensive)
 const datatableLimiter = rateLimit({

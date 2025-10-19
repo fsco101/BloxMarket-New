@@ -1840,6 +1840,27 @@ class ApiService {
       method: 'DELETE'
     });
   }
+
+  // Vouch methods
+  async vouchForTrade(tradeId: string) {
+    return this.request(`/vouches/trade/${tradeId}`, {
+      method: 'POST'
+    });
+  }
+
+  async unvouchForTrade(tradeId: string) {
+    return this.request(`/vouches/trade/${tradeId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async getTradeVouches(tradeId: string) {
+    return this.request(`/vouches/trade/${tradeId}`);
+  }
+
+  async hasUserVouchedForTrade(tradeId: string) {
+    return this.request(`/vouches/trade/${tradeId}/check`);
+  }
 }
 
 export const apiService = new ApiService();

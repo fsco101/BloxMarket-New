@@ -1552,14 +1552,6 @@ export function Dashboard() {
                     >
                       Message
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Star className="w-4 h-4 mr-1" />
-                      Vouch
-                    </Button>
                   </div>
                 }
               />

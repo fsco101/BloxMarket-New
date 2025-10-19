@@ -246,6 +246,7 @@ export const authController = {
         bio: user.bio,
         discord_username: user.discord_username,
         credibility_score: user.credibility_score,
+        vouch_count: user.vouch_count,
         is_verified: user.is_verified,
         is_middleman: user.is_middleman,
         verification_requested: user.verification_requested,

@@ -19,7 +19,7 @@ export const tradeController = {
 
       const [trades, total] = await Promise.all([
         Trade.find(query)
-          .populate('user_id', 'username roblox_username credibility_score')
+          .populate('user_id', 'username roblox_username credibility_score vouch_count')
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit),
@@ -29,10 +29,12 @@ export const tradeController = {
       // Get vote and comment counts for each trade
       const tradesWithCounts = await Promise.all(
         trades.map(async (trade) => {
-          const [commentCount, upvotes, downvotes] = await Promise.all([
+          const [commentCount, upvotes, downvotes, vouchCount] = await Promise.all([
             TradeComment.countDocuments({ trade_id: trade._id }),
             TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'up' }),
-            TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'down' })
+            TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'down' }),
+            // Get vouch count from vouches collection
+            mongoose.connection.db.collection('vouches').countDocuments({ trade_id: trade._id })
           ]);
 
           return {
@@ -42,17 +44,19 @@ export const tradeController = {
             description: trade.description,
             status: trade.status,
             category: trade.category,
-            created_at: trade.createdAt,
+            created_at: trade.created_at,
             user: {
               _id: trade.user_id._id,
               username: trade.user_id.username,
               roblox_username: trade.user_id.roblox_username,
-              credibility_score: trade.user_id.credibility_score
+              credibility_score: trade.user_id.credibility_score,
+              vouch_count: trade.user_id.vouch_count
             },
             images: trade.images || [],
             comment_count: commentCount,
             upvotes,
-            downvotes
+            downvotes,
+            vouch_count: vouchCount
           };
         })
       );
@@ -128,9 +132,42 @@ export const tradeController = {
       const savedTrade = await newTrade.save();
       console.log('Trade created successfully:', savedTrade._id);
 
+      // Populate user data for the response
+      await savedTrade.populate('user_id', 'username roblox_username credibility_score vouch_count');
+
+      // Get initial vote/comment counts (should be 0 for new trade)
+      const [commentCount, upvotes, downvotes, vouchCount] = await Promise.all([
+        TradeComment.countDocuments({ trade_id: savedTrade._id }),
+        TradeVote.countDocuments({ trade_id: savedTrade._id, vote_type: 'up' }),
+        TradeVote.countDocuments({ trade_id: savedTrade._id, vote_type: 'down' }),
+        // Get vouch count from vouches collection
+        mongoose.connection.db.collection('vouches').countDocuments({ trade_id: savedTrade._id })
+      ]);
+
       res.status(201).json({
         message: 'Trade created successfully',
-        tradeId: savedTrade._id
+        trade: {
+          trade_id: savedTrade._id,
+          item_offered: savedTrade.item_offered,
+          item_requested: savedTrade.item_requested,
+          description: savedTrade.description,
+          status: savedTrade.status,
+          category: savedTrade.category,
+          created_at: savedTrade.created_at,
+          updated_at: savedTrade.updated_at,
+          user: {
+            _id: savedTrade.user_id._id,
+            username: savedTrade.user_id.username,
+            roblox_username: savedTrade.user_id.roblox_username,
+            credibility_score: savedTrade.user_id.credibility_score,
+            vouch_count: savedTrade.user_id.vouch_count
+          },
+          images: savedTrade.images || [],
+          comment_count: commentCount,
+          upvotes,
+          downvotes,
+          vouch_count: vouchCount
+        }
       });
 
     } catch (error) {
@@ -163,17 +200,19 @@ export const tradeController = {
       }
 
       const trade = await Trade.findById(tradeId)
-        .populate('user_id', 'username roblox_username credibility_score');
+        .populate('user_id', 'username roblox_username credibility_score vouch_count');
 
       if (!trade) {
         return res.status(404).json({ error: 'Trade not found' });
       }
 
       // Get vote counts for this trade
-      const [commentCount, upvotes, downvotes] = await Promise.all([
+      const [commentCount, upvotes, downvotes, vouchCount] = await Promise.all([
         TradeComment.countDocuments({ trade_id: trade._id }),
         TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'up' }),
-        TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'down' })
+        TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'down' }),
+        // Get vouch count from vouches collection
+        mongoose.connection.db.collection('vouches').countDocuments({ trade_id: trade._id })
       ]);
 
       res.json({
@@ -183,17 +222,19 @@ export const tradeController = {
         description: trade.description,
         status: trade.status,
         category: trade.category,
-        created_at: trade.createdAt,
+        created_at: trade.created_at,
         user: {
           _id: trade.user_id._id,
           username: trade.user_id.username,
           roblox_username: trade.user_id.roblox_username,
-          credibility_score: trade.user_id.credibility_score
+          credibility_score: trade.user_id.credibility_score,
+          vouch_count: trade.user_id.vouch_count
         },
         images: trade.images || [],
         comment_count: commentCount,
         upvotes,
-        downvotes
+        downvotes,
+        vouch_count: vouchCount
       });
 
     } catch (error) {
@@ -232,15 +273,41 @@ export const tradeController = {
 
       await trade.save();
 
+      // Populate user data for the response
+      await trade.populate('user_id', 'username roblox_username credibility_score vouch_count');
+
+      // Get updated vote/comment counts
+      const [commentCount, upvotes, downvotes, vouchCount] = await Promise.all([
+        TradeComment.countDocuments({ trade_id: trade._id }),
+        TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'up' }),
+        TradeVote.countDocuments({ trade_id: trade._id, vote_type: 'down' }),
+        // Get vouch count from vouches collection
+        mongoose.connection.db.collection('vouches').countDocuments({ trade_id: trade._id })
+      ]);
+
       res.json({
         message: 'Trade updated successfully',
         trade: {
-          _id: trade._id,
+          trade_id: trade._id,
           item_offered: trade.item_offered,
           item_requested: trade.item_requested,
           description: trade.description,
           status: trade.status,
-          category: trade.category
+          category: trade.category,
+          created_at: trade.created_at,
+          updated_at: trade.updated_at,
+          user: {
+            _id: trade.user_id._id,
+            username: trade.user_id.username,
+            roblox_username: trade.user_id.roblox_username,
+            credibility_score: trade.user_id.credibility_score,
+            vouch_count: trade.user_id.vouch_count
+          },
+          images: trade.images || [],
+          comment_count: commentCount,
+          upvotes,
+          downvotes,
+          vouch_count: vouchCount
         }
       });
 

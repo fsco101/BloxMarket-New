@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  vouch_count: {
+    type: Number,
+    default: 0
+  },
   role: {
     type: String,
     enum: ['user', 'verified', 'middleman', 'admin', 'moderator', 'banned'],

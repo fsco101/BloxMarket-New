@@ -26,24 +26,25 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Check,
   CheckCircle,
   Send,
   ArrowUp,
   ArrowDown,
-  Flag
+  Flag,
+  ImageIcon,
+  Heart
 } from 'lucide-react';
 import { useAuth } from '../App';
 import { formatDistanceToNow } from 'date-fns';
 
 const toISO = (v: unknown): string => {
   try {
-    if (!v) return new Date().toISOString();
+    if (!v) return '';
     
     // Handle different date formats
     if (typeof v === 'string' || v instanceof Date || typeof v === 'number') {
       const d = new Date(v);
-      return !isNaN(d.getTime()) ? d.toISOString() : new Date().toISOString();
+      return !isNaN(d.getTime()) ? d.toISOString() : '';
     }
     
     // Handle MongoDB date format with $date property
@@ -51,7 +52,7 @@ const toISO = (v: unknown): string => {
       const dateValue = (v as { $date: unknown }).$date;
       if (dateValue) {
         const d = new Date(String(dateValue));
-        return !isNaN(d.getTime()) ? d.toISOString() : new Date().toISOString();
+        return !isNaN(d.getTime()) ? d.toISOString() : '';
       }
     }
     
@@ -60,15 +61,15 @@ const toISO = (v: unknown): string => {
       const dateValue = (v as { date: unknown }).date;
       if (dateValue) {
         const d = new Date(String(dateValue));
-        return !isNaN(d.getTime()) ? d.toISOString() : new Date().toISOString();
+        return !isNaN(d.getTime()) ? d.toISOString() : '';
       }
     }
     
     console.warn("Unknown date format:", v);
-    return new Date().toISOString();
+    return '';
   } catch (error) {
     console.error("Error converting date to ISO:", error, "Value was:", v);
-    return new Date().toISOString(); // Fallback to current date
+    return '';
   }
 };
 
@@ -121,12 +122,14 @@ interface Trade {
   username: string;
   roblox_username: string;
   credibility_score: number;
+  user_vouch_count?: number;
   images?: { image_url: string; uploaded_at: string }[];
   user_id?: string;
   upvotes?: number;
   downvotes?: number;
   comments?: TradeComment[];
   comment_count?: number;
+  vouch_count?: number;
 }
 
 interface User {
@@ -135,6 +138,7 @@ interface User {
   email: string;
   robloxUsername?: string;
   role?: string;
+  vouch_count?: number;
 }
 
 interface TradeComment {
@@ -232,13 +236,12 @@ function ImageDisplay({ src, alt, className, fallback }: ImageDisplayProps) {
 }
 
 // Add new interfaces for modals
-interface ImageModalProps {
-  images: { image_url: string; uploaded_at: string }[];
+interface ImageViewerProps {
+  images: Array<{ url: string; type: 'trade' | 'forum' }>;
   currentIndex: number;
-  isOpen: boolean;
-  onClose: () => void;
   onNext: () => void;
   onPrevious: () => void;
+  onSetIndex: (index: number) => void;
 }
 
 interface TradeDetailsModalProps {
@@ -251,109 +254,154 @@ interface TradeDetailsModalProps {
   canDelete: boolean;
   deleteLoading: boolean;
   onReport?: () => void;
+  currentUser: User | null;
+  vouchLoading: string | null;
+  userVouchedTrades: Set<string>;
+  onVouch: (tradeId: string, tradeOwnerId: string) => void;
 }
 
-interface ReportModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (reportData: { reason: string; description: string; tradeId: string }) => Promise<void>;
-  tradeId: string;
-}
-
-// Image Modal Component
-function ImageModal({ images, currentIndex, isOpen, onClose, onNext, onPrevious }: ImageModalProps) {
-  if (!isOpen || !images || images.length === 0) return null;
-
+// ImageViewer Component
+function ImageViewer({ images, currentIndex, onNext, onPrevious, onSetIndex }: ImageViewerProps) {
   const currentImage = images[currentIndex];
+  const hasMultipleImages = images.length > 1;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <div className="relative bg-black rounded-lg overflow-hidden">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          
-          {images.length > 1 && (
-            <>
-              <button
-                onClick={onPrevious}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={onNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </>
-          )}
-          
-          <div className="relative aspect-video bg-black flex items-center justify-center">
-            <img
-              src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${currentImage.image_url.startsWith('/') ? currentImage.image_url : `/uploads/trades/${currentImage.image_url}`}`}
-              alt={`Trade image ${currentIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-          
-          {images.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-              {currentIndex + 1} / {images.length}
+    <div className="relative h-full flex items-center justify-center">
+      {/* Main Image */}
+      <ImageDisplay
+        src={currentImage.url}
+        alt={`Post image ${currentIndex + 1}`}
+        className="max-w-full max-h-full object-contain"
+        fallback={
+          <div className="flex items-center justify-center h-full text-white/70">
+            <div className="text-center">
+              <ImageIcon className="w-16 h-16 mx-auto mb-4" />
+              <span className="text-sm">Image unavailable</span>
             </div>
-          )}
+          </div>
+        }
+      />
+
+      {/* Navigation Arrows - Only show if multiple images */}
+      {hasMultipleImages && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrevious();
+            }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors z-10"
+            disabled={images.length <= 1}
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onNext();
+            }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-colors z-10"
+            disabled={images.length <= 1}
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
+
+      {/* Image Counter */}
+      {hasMultipleImages && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+          {currentIndex + 1} / {images.length}
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+
+      {/* Thumbnail Strip - Only show if multiple images */}
+      {hasMultipleImages && (
+        <div className="absolute bottom-6 left-6 right-6 flex justify-center gap-2">
+          <div className="flex gap-2 bg-black/50 rounded-lg p-2 max-w-full overflow-x-auto">
+            {images.map((image, index) => (
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetIndex(index);
+                }}
+                className={`flex-shrink-0 w-12 h-12 rounded border-2 transition-colors ${
+                  index === currentIndex
+                    ? 'border-white'
+                    : 'border-transparent hover:border-white/50'
+                }`}
+              >
+                <ImageDisplay
+                  src={image.url}
+                  alt={`Thumbnail ${index + 1}`}
+                  className="w-full h-full object-cover rounded"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 // Report Modal Component
-function ReportModal({ isOpen, onClose, onSubmit, tradeId }: ReportModalProps) {
-  const [reportReason, setReportReason] = useState('');
-  const [reportDescription, setReportDescription] = useState('');
+function ReportModal({ post, isOpen, onClose }: { post: Trade | null; isOpen: boolean; onClose: () => void }) {
+  const [reason, setReason] = useState('');
+  const [reportType, setReportType] = useState<'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'>('Other');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reportReason.trim()) return;
+  const reportTypes = [
+    { value: 'Scamming', label: 'Scamming' },
+    { value: 'Harassment', label: 'Harassment' },
+    { value: 'Inappropriate Content', label: 'Inappropriate Content' },
+    { value: 'Spam', label: 'Spam' },
+    { value: 'Impersonation', label: 'Impersonation' },
+    { value: 'Other', label: 'Other' }
+  ];
+
+  const handleSubmit = async () => {
+    if (!post || !reason.trim() || submitting) return;
 
     try {
       setSubmitting(true);
-      await onSubmit({
-        reason: reportReason,
-        description: reportDescription,
-        tradeId
+      await apiService.createReport({
+        post_id: post.trade_id,
+        post_type: 'trade',
+        reason: reason.trim(),
+        type: reportType
       });
-      setReportReason('');
-      setReportDescription('');
+
+      toast.success('Report submitted successfully');
+      setReason('');
+      setReportType('Other');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to submit report:', error);
+      if (error.message?.includes('already reported')) {
+        toast.error('You have already reported this post');
+      } else {
+        toast.error('You cannot report your own post.');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const reportReasons = [
-    'Spam or inappropriate content',
-    'Harassment or bullying',
-    'Scam or fraudulent activity',
-    'Copyright infringement',
-    'False information',
-    'Other'
-  ];
+  const handleClose = () => {
+    if (!submitting) {
+      setReason('');
+      setReportType('Other');
+      onClose();
+    }
+  };
+
+  if (!post) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Flag className="w-5 h-5 text-red-500" />
@@ -364,17 +412,17 @@ function ReportModal({ isOpen, onClose, onSubmit, tradeId }: ReportModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="report-reason">Reason for report *</Label>
-            <Select value={reportReason} onValueChange={setReportReason}>
+            <Label htmlFor="report-type">Report Type</Label>
+            <Select value={reportType} onValueChange={(value: any) => setReportType(value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a reason" />
+                <SelectValue placeholder="Select report type" />
               </SelectTrigger>
               <SelectContent>
-                {reportReasons.map((reason) => (
-                  <SelectItem key={reason} value={reason}>
-                    {reason}
+                {reportTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -382,42 +430,42 @@ function ReportModal({ isOpen, onClose, onSubmit, tradeId }: ReportModalProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="report-description">Additional details (optional)</Label>
+            <Label htmlFor="report-reason">Reason for report *</Label>
             <Textarea
-              id="report-description"
-              placeholder="Provide more context about this report..."
-              value={reportDescription}
-              onChange={(e) => setReportDescription(e.target.value)}
-              className="min-h-[80px]"
+              id="report-reason"
+              placeholder="Please provide details about this report..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[100px]"
             />
           </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!reportReason.trim() || submitting} className="bg-red-500 hover:bg-red-600 text-white">
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Flag className="w-4 h-4 mr-2" />
-                  Submit Report
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={handleClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button type="submit" onClick={handleSubmit} disabled={!reason.trim() || submitting} className="bg-red-500 hover:bg-red-600 text-white">
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Flag className="w-4 h-4 mr-2" />
+                Submit Report
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
 // Enhanced Trade Details Modal Component with upvote/downvote and comments
-function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport }: TradeDetailsModalProps) {
+function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport, currentUser, vouchLoading, userVouchedTrades, onVouch }: TradeDetailsModalProps) {
   const [comments, setComments] = useState<TradeComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -638,9 +686,6 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{trade.username}</span>
-                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                  {trade.credibility_score || 0}★
-                </Badge>
               </div>
               <div className="text-sm text-muted-foreground">
                 @{trade.roblox_username}
@@ -672,6 +717,21 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
                 {votingLoading && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
               </Button>
             </div>
+            
+            {/* Vouch Button */}
+            {apiService.isAuthenticated() && currentUser && currentUser.id !== trade.user_id && trade.user_id && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onVouch(trade.trade_id, trade.user_id!)}
+                disabled={vouchLoading === trade.trade_id}
+                className={`${userVouchedTrades.has(trade.trade_id) ? 'text-pink-600 bg-pink-50 dark:bg-pink-950' : 'text-muted-foreground hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950'} transition-colors`}
+              >
+                <Heart className={`w-5 h-5 mr-2 ${userVouchedTrades.has(trade.trade_id) ? 'fill-current' : ''}`} />
+                {userVouchedTrades.has(trade.trade_id) ? 'Unvouch' : 'Vouch'} ({trade.vouch_count || 0})
+                {vouchLoading === trade.trade_id && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+              </Button>
+            )}
           </div>
 
           {/* Trade Items */}
@@ -720,7 +780,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
           )}
 
           {/* Vote Stats */}
-          <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg text-sm">
+          <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg text-sm">
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-green-600">
                 <ArrowUp className="w-4 h-4" />
@@ -741,6 +801,13 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
                 <span className="font-medium">{comments.length}</span>
               </div>
               <span className="text-muted-foreground">Comments</span>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 text-pink-600">
+                <Heart className="w-4 h-4" />
+                <span className="font-medium">{trade.vouch_count || 0}</span>
+              </div>
+              <span className="text-muted-foreground">Vouches</span>
             </div>
           </div>
 
@@ -800,11 +867,6 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-sm">{comment.username}</span>
-                        {comment.credibility_score && (
-                          <Badge variant="secondary" className="text-xs">
-                            {comment.credibility_score}★
-                          </Badge>
-                        )}
                         <span className="text-xs text-muted-foreground">
                           {formatDate(toISO(comment.created_at))}
                         </span>
@@ -961,6 +1023,10 @@ export function TradingHub() {
   // Report modal state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  // Vouch state
+  const [vouchLoading, setVouchLoading] = useState<string | null>(null);
+  const [userVouchedTrades, setUserVouchedTrades] = useState<Set<string>>(new Set());
+
   const loadTrades = useCallback(async () => {
     try {
       setLoading(true);
@@ -991,17 +1057,17 @@ export function TradingHub() {
         user?: {
           username?: string;
           roblox_username?: string;
-          credibility_score?: number;
           _id?: string;
+          vouch_count?: number;
         };
         username?: string;
         roblox_username?: string;
-        credibility_score?: number;
         user_id?: string;
         images?: unknown[];
         upvotes?: number | string[] | null;
         downvotes?: number | string[] | null;
         comment_count?: number;
+        vouch_count?: number;
       }
       
       const mappedTrades = response.trades.map((trade: TradeData) => {
@@ -1076,11 +1142,13 @@ export function TradingHub() {
             username: (trade.user?.username as string) || (trade.username as string) || 'Unknown User',
             roblox_username: (trade.user?.roblox_username as string) || (trade.roblox_username as string) || '',
             credibility_score: (trade.user?.credibility_score as number) ?? (trade.credibility_score as number) ?? 0,
+            user_vouch_count: (trade.user?.vouch_count as number) ?? 0,
             user_id: (trade.user?._id as string) || (trade.user_id as string) || '',
             images: processedImages,
             upvotes: Array.isArray(trade.upvotes) ? trade.upvotes.length : (trade.upvotes as number) || 0,
             downvotes: Array.isArray(trade.downvotes) ? trade.downvotes.length : (trade.downvotes as number) || 0,
-            comment_count: trade.comment_count as number || 0
+            comment_count: trade.comment_count as number || 0,
+            vouch_count: trade.vouch_count as number || 0
           };
         } catch (tradeErr) {
           console.error('Error processing trade:', tradeErr, trade);
@@ -1095,12 +1163,13 @@ export function TradingHub() {
             updated_at: new Date().toISOString(),
             username: 'Unknown',
             roblox_username: '',
-            credibility_score: 0,
+            user_vouch_count: 0,
             user_id: '',
             images: [] as {image_url: string, uploaded_at: string}[],
             upvotes: 0,
             downvotes: 0,
-            comment_count: 0
+            comment_count: 0,
+            vouch_count: 0
           };
         }
       });
@@ -1117,9 +1186,9 @@ export function TradingHub() {
 
   const { isLoggedIn, isLoading: authLoading } = useAuth();
 
-  // Wait for auth before calling protected endpoints (including /auth/me)
+  // Load current user data periodically to keep vouch count updated
   useEffect(() => {
-    if (authLoading || !isLoggedIn || !apiService.isAuthenticated()) return;
+    if (!isLoggedIn || !apiService.isAuthenticated()) return;
 
     const loadCurrentUser = async () => {
       try {
@@ -1129,16 +1198,23 @@ export function TradingHub() {
           username: me.username,
           email: me.email,
           robloxUsername: me.roblox_username,
-          role: me.role
+          role: me.role,
+          vouch_count: me.vouch_count
         });
       } catch (err) {
-        console.error('Failed to load current user:', err);
-        // apiService will emit 'auth-expired' if token truly invalid
+        console.error('Failed to refresh current user:', err);
+        // Don't show error toast for background refresh
       }
     };
 
+    // Load immediately
     loadCurrentUser();
-  }, [authLoading, isLoggedIn]);
+
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(loadCurrentUser, 30000);
+
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
 
   // Load trades only when authenticated
   useEffect(() => {
@@ -1179,26 +1255,26 @@ export function TradingHub() {
     if (validFiles.length > 0) {
       setUploadSelectedImages(prev => [...prev, ...validFiles]);
       
-      // Create preview URLs
-      validFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setImagePreviewUrls(prev => [...prev, e.target?.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
+      // Create preview URLs using URL.createObjectURL for better performance
+      const newPreviewUrls = validFiles.map(file => URL.createObjectURL(file));
+      setImagePreviewUrls(prev => [...prev, ...newPreviewUrls]);
     }
   };
 
   const handleRemoveImage = (index: number) => {
     setUploadSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => {
+      const newUrls = prev.filter((_, i) => i !== index);
+      // Revoke the URL of the removed image to prevent memory leaks
+      URL.revokeObjectURL(prev[index]);
+      return newUrls;
+    });
   };
 
   const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     
-    if (files.length + editUploadSelectedImages.length > 5) {
+    if (files.length > 5) {
       setError('Maximum 5 images allowed');
       return;
     }
@@ -1217,22 +1293,33 @@ export function TradingHub() {
     });
 
     if (validFiles.length > 0) {
-      setEditUploadSelectedImages(prev => [...prev, ...validFiles]);
-      
-      // Create preview URLs
-      validFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setEditImagePreviewUrls(prev => [...prev, e.target?.result as string]);
-        };
-        reader.readAsDataURL(file);
+      // Clean up existing object URLs to prevent memory leaks (only revoke blob URLs)
+      editImagePreviewUrls.forEach(url => {
+        if (url && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
       });
+      
+      // Replace all images instead of adding to existing ones
+      setEditUploadSelectedImages(validFiles);
+      
+      // Create preview URLs using URL.createObjectURL for better performance
+      const newPreviewUrls = validFiles.map(file => URL.createObjectURL(file));
+      setEditImagePreviewUrls(newPreviewUrls);
     }
   };
 
   const handleRemoveEditImage = (index: number) => {
     setEditUploadSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setEditImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setEditImagePreviewUrls(prev => {
+      const newUrls = prev.filter((_, i) => i !== index);
+      // Only revoke object URLs (blob URLs), not server URLs
+      const urlToRemove = prev[index];
+      if (urlToRemove && urlToRemove.startsWith('blob:')) {
+        URL.revokeObjectURL(urlToRemove);
+      }
+      return newUrls;
+    });
   };
 
   // Update modal functions to use the renamed variables
@@ -1302,27 +1389,6 @@ export function TradingHub() {
     }
   };
 
-  const handleMarkAsTraded = async (tradeId: string, tradeTitle: string) => {
-    try {
-      setStatusUpdateLoading(tradeId);
-      await apiService.updateTradeStatus(tradeId, 'completed');
-      
-      // Update the trade in the local state
-      setTrades(prev => prev.map(trade => 
-        trade.trade_id === tradeId 
-          ? { ...trade, status: 'completed' }
-          : trade
-      ));
-      
-      toast.success(`Trade "${tradeTitle}" marked as completed!`);
-    } catch (error) {
-      console.error('Failed to mark trade as completed:', error);
-      toast.error('Failed to mark trade as completed');
-    } finally {
-      setStatusUpdateLoading(null);
-    }
-  };
-
   const handleReopenTrade = async (tradeId: string, tradeTitle: string) => {
     try {
       setStatusUpdateLoading(tradeId);
@@ -1348,31 +1414,99 @@ export function TradingHub() {
     setIsReportModalOpen(true);
   };
 
-  const handleSubmitReport = async (reportData: { reason: string; description: string; tradeId: string }) => {
-    try {
-      // Map frontend reason strings to backend enum values
-      const reasonMapping: Record<string, 'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'> = {
-        'Spam or inappropriate content': 'Inappropriate Content',
-        'Harassment or bullying': 'Harassment',
-        'Scam or fraudulent activity': 'Scamming',
-        'Copyright infringement': 'Other',
-        'False information': 'Other',
-        'Other': 'Other'
-      };
-
-      await apiService.createReport({
-        post_id: reportData.tradeId,
-        post_type: 'trade',
-        reason: reportData.description || reportData.reason, // Use description as reason if provided, otherwise use the selected reason
-        type: reasonMapping[reportData.reason] || 'Other'
-      });
-      toast.success('Report submitted successfully');
-    } catch (error) {
-      console.error('Failed to submit report:', error);
-      toast.error('Failed to submit report');
-      throw error; // Re-throw to let the modal handle it
+  const handleVouchTrade = async (tradeId: string, tradeOwnerId: string) => {
+    if (!currentUser) {
+      toast.error('Please log in to vouch');
+      return;
     }
+
+    // Check if user is trying to vouch for their own trade
+    if (currentUser.id === tradeOwnerId) {
+      toast.error('You cannot vouch for your own trade');
+      return;
+    }
+
+    const hasVouched = userVouchedTrades.has(tradeId);
+
+    try {
+      setVouchLoading(tradeId);
+
+      if (hasVouched) {
+        // Unvouch
+        await apiService.unvouchForTrade(tradeId);
+
+        // Update local state
+        setUserVouchedTrades(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(tradeId);
+          return newSet;
+        });
+        setTrades(prev => prev.map(trade =>
+          trade.trade_id === tradeId
+            ? { ...trade, vouch_count: Math.max((trade.vouch_count || 0) - 1, 0) }
+            : trade
+        ));
+
+        toast.success('Vouch removed successfully!');
+      } else {
+        // Vouch
+        await apiService.vouchForTrade(tradeId);
+
+        // Update local state
+        setUserVouchedTrades(prev => new Set(prev).add(tradeId));
+        setTrades(prev => prev.map(trade =>
+          trade.trade_id === tradeId
+            ? { ...trade, vouch_count: (trade.vouch_count || 0) + 1 }
+            : trade
+        ));
+
+        toast.success('Vouch added successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to update vouch:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update vouch';
+      toast.error(errorMessage);
+    } finally {
+      setVouchLoading(null);
+    }
+
+    // Refresh trades after a short delay to ensure any server-side updates are reflected
+    setTimeout(() => {
+      loadTrades();
+    }, 1000);
   };
+
+  // Load user's vouched trades when component mounts
+  useEffect(() => {
+    const loadUserVouches = async () => {
+      if (!currentUser) return;
+
+      try {
+        // Get all trades and check which ones the user has vouched for
+        const vouchedTradeIds = new Set<string>();
+        for (const trade of trades) {
+          try {
+            const response = await apiService.hasUserVouchedForTrade(trade.trade_id);
+            if (response.hasVouched) {
+              vouchedTradeIds.add(trade.trade_id);
+            }
+          } catch (error) {
+            // Ignore errors for individual trades
+            console.warn(`Could not check vouch status for trade ${trade.trade_id}:`, error);
+          }
+        }
+        setUserVouchedTrades(vouchedTradeIds);
+      } catch (error) {
+        console.error('Failed to load user vouches:', error);
+      }
+    };
+
+    if (currentUser && trades.length > 0) {
+      loadUserVouches();
+    }
+  }, [currentUser, trades]);
+
+
 
   // Update create trade function
   const handleCreateTrade = async (e: React.FormEvent) => {
@@ -1407,6 +1541,8 @@ export function TradingHub() {
         itemRequested: '',
         description: ''
       });
+      // Clean up object URLs to prevent memory leaks
+      imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
       setUploadSelectedImages([]);
       setImagePreviewUrls([]);
       
@@ -1449,14 +1585,33 @@ export function TradingHub() {
       return;
     }
     
+    // Clean up any existing object URLs before opening edit dialog (only revoke blob URLs)
+    editImagePreviewUrls.forEach(url => {
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
+    
     setEditingTrade(trade);
     setEditTrade({
       itemOffered: trade.item_offered,
       itemRequested: trade.item_requested || '',
       description: trade.description || ''
     });
-    setEditUploadSelectedImages([]);
-    setEditImagePreviewUrls([]);
+    
+    // Load existing images for preview (these are server URLs, not File objects)
+    if (trade.images && trade.images.length > 0) {
+      const existingImageUrls = trade.images.map(img => 
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${img.image_url.startsWith('/') ? img.image_url : `/uploads/trades/${img.image_url}`}`
+      );
+      setEditImagePreviewUrls(existingImageUrls);
+      // Note: existing images are not File objects, so editUploadSelectedImages stays empty
+      setEditUploadSelectedImages([]);
+    } else {
+      setEditUploadSelectedImages([]);
+      setEditImagePreviewUrls([]);
+    }
+    
     setIsEditDialogOpen(true);
   };
 
@@ -1488,6 +1643,12 @@ export function TradingHub() {
         itemOffered: '',
         itemRequested: '',
         description: ''
+      });
+      // Clean up object URLs to prevent memory leaks (only revoke blob URLs, not server URLs)
+      editImagePreviewUrls.forEach(url => {
+        if (url && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
       });
       setEditUploadSelectedImages([]);
       setEditImagePreviewUrls([]);
@@ -1540,6 +1701,10 @@ export function TradingHub() {
           <div>
             <h1 className="text-2xl font-bold">Trading Hub</h1>
             <p className="text-muted-foreground">Discover and create trades with the community</p>
+            {currentUser && (
+              <div className="flex items-center gap-2 mt-2">
+              </div>
+            )}
           </div>
           
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -1954,8 +2119,10 @@ export function TradingHub() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{trade.username}</span>
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                              {trade.credibility_score || 0}★
+
+                            <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300">
+                              <Heart className="w-3 h-3 mr-1" />
+                              {trade.user_vouch_count || 0}
                             </Badge>
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -2052,6 +2219,10 @@ export function TradingHub() {
                           <ArrowDown className="w-3 h-3" />
                           <span>{trade.downvotes || 0}</span>
                         </div>
+                        <div className="flex items-center gap-1 text-pink-600">
+                          <Heart className="w-3 h-3" />
+                          <span>{trade.vouch_count || 0}</span>
+                        </div>
                         <div className="flex items-center gap-1">
                           <MessageSquare className="w-3 h-3" />
                           <span>{trade.comment_count || 0}</span>
@@ -2073,21 +2244,6 @@ export function TradingHub() {
                               <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
                                 <MessageSquare className="w-3 h-3 mr-1" />
                                 Contact
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={() => handleMarkAsTraded(trade.trade_id, trade.item_offered)}
-                                disabled={statusUpdateLoading === trade.trade_id}
-                                title="Mark as traded/completed"
-                              >
-                                {statusUpdateLoading === trade.trade_id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Check className="w-3 h-3 mr-1" />
-                                )}
-                                {statusUpdateLoading === trade.trade_id ? 'Updating...' : 'Done'}
                               </Button>
                               <Button 
                                 variant="outline" 
@@ -2221,22 +2377,31 @@ export function TradingHub() {
         canDelete={selectedTrade ? canDeleteTrade(selectedTrade) : false}
         deleteLoading={selectedTrade ? deleteLoading === selectedTrade.trade_id : false}
         onReport={handleReportTrade}
+        currentUser={currentUser}
+        vouchLoading={vouchLoading}
+        userVouchedTrades={userVouchedTrades}
+        onVouch={handleVouchTrade}
       />
 
-      <ImageModal
-        images={modalSelectedImages}
-        currentIndex={currentImageIndex}
-        isOpen={isImageModalOpen}
-        onClose={() => setIsImageModalOpen(false)}
-        onNext={handleNextImage}
-        onPrevious={handlePreviousImage}
-      />
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <ImageViewer
+            images={modalSelectedImages.map(img => ({
+              url: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${img.image_url.startsWith('/') ? img.image_url : `/uploads/trades/${img.image_url}`}`,
+              type: 'trade' as const
+            }))}
+            currentIndex={currentImageIndex}
+            onNext={handleNextImage}
+            onPrevious={handlePreviousImage}
+            onSetIndex={setCurrentImageIndex}
+          />
+        </DialogContent>
+      </Dialog>
 
       <ReportModal
+        post={selectedTrade}
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        onSubmit={handleSubmitReport}
-        tradeId={selectedTrade?.trade_id || ''}
       />
 
       {/* Pagination Controls */}
