@@ -12,7 +12,9 @@ import {
   MessageSquare, 
   CheckCircle,
   TrendingUp,
-  Award
+  Award,
+  Heart,
+  Loader2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -27,6 +29,7 @@ interface Middleman {
   avatar?: string;
   rating: number;
   vouchCount: number;
+  credibilityScore: number;
   completedTrades: number;
   joinDate: string;
   verified: boolean;
@@ -48,6 +51,7 @@ interface MiddlemanApiResponse {
   avatar_url?: string;
   rating?: number;
   vouches?: number;
+  credibility_score?: number;
   trades?: number;
   verificationDate?: string;
   createdAt?: string;
@@ -75,6 +79,11 @@ export function MiddlemanDirectory() {
     rejectionReason?: string;
   }>(null);
   
+  // Vouch-related state
+  const [userVouchedMiddlemen, setUserVouchedMiddlemen] = useState<Set<string>>(new Set());
+  const [vouchLoading, setVouchLoading] = useState<Set<string>>(new Set());
+  const [vouchStatusVersion, setVouchStatusVersion] = useState(0); // Track vouch status changes
+  
   // Check application status on component mount
   useEffect(() => {
     const checkApplicationStatus = async () => {
@@ -93,6 +102,38 @@ export function MiddlemanDirectory() {
       checkApplicationStatus();
     }
   }, [user]);
+
+  // Load user's vouch status for all middlemen
+  useEffect(() => {
+    const loadUserVouchStatus = async () => {
+      if (!user || middlemen.length === 0) return;
+
+      try {
+        const vouchStatusPromises = middlemen.map(mm => 
+          apiService.hasUserVouchedForMiddleman(mm.id.toString())
+            .catch(error => {
+              console.error(`Error checking vouch status for middleman ${mm.id}:`, error);
+              return { hasVouched: false }; // Default to not vouched on error
+            })
+        );
+
+        const vouchStatuses = await Promise.all(vouchStatusPromises);
+
+        const vouchedSet = new Set<string>();
+        vouchStatuses.forEach((status, index) => {
+          if (status.hasVouched) {
+            vouchedSet.add(middlemen[index].id.toString());
+          }
+        });
+
+        setUserVouchedMiddlemen(vouchedSet);
+      } catch (error) {
+        console.error('Error loading user vouch status:', error);
+      }
+    };
+
+    loadUserVouchStatus();
+  }, [user, middlemen, vouchStatusVersion]);
 
   // Determine if user can apply to be a middleman
   const canApplyForMiddleman = () => {
@@ -127,6 +168,7 @@ export function MiddlemanDirectory() {
           avatar: mm.avatar_url,
           rating: mm.rating || 5,
           vouchCount: mm.vouches || 0,
+          credibilityScore: mm.credibility_score || 0,
           completedTrades: mm.trades || 0,
           joinDate: mm.verificationDate || mm.createdAt,
           verified: true,
@@ -154,6 +196,7 @@ export function MiddlemanDirectory() {
             avatar: 'https://images.unsplash.com/photo-1740252117027-4275d3f84385?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxyb2Jsb3glMjBhdmF0YXIlMjBjaGFyYWN0ZXJ8ZW58MXx8fHwxNzU4NTYwNDQ4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
             rating: 5,
             vouchCount: 347,
+            credibilityScore: 3470, // 347 vouches * 5 stars * 2 points per star
             completedTrades: 1205,
             joinDate: '2022-01-15',
             verified: true,
@@ -173,7 +216,7 @@ export function MiddlemanDirectory() {
     };
     
     fetchMiddlemen();
-  }, []);
+  }, [vouchStatusVersion]); // Add vouchStatusVersion as dependency
   
   // Helper functions for formatting data
   const determineTier = (rating: number, vouches: number): string => {
@@ -214,6 +257,71 @@ export function MiddlemanDirectory() {
       case 'busy': return 'bg-red-500';
       case 'offline': return 'bg-gray-500';
       default: return 'bg-gray-500';
+    }
+  };
+
+  // Vouch handling functions
+  const handleVouch = async (middlemanId: string, rating: number, comment?: string) => {
+    if (!user) {
+      toast.error('You must be logged in to vouch');
+      return;
+    }
+
+    if (user.id === middlemanId) {
+      toast.error('You cannot vouch for yourself');
+      return;
+    }
+
+    setVouchLoading(prev => new Set(prev).add(middlemanId));
+
+    try {
+      await apiService.vouchForMiddleman(middlemanId, rating, comment);
+      
+      // Update local state for immediate UI feedback
+      setUserVouchedMiddlemen(prev => new Set(prev).add(middlemanId));
+      
+      // Trigger data refetch to get updated vouch count and credibility score
+      setVouchStatusVersion(prev => prev + 1);
+
+      toast.success('Successfully vouched for middleman!');
+    } catch (error) {
+      console.error('Error vouching for middleman:', error);
+      toast.error('Failed to vouch for middleman');
+    } finally {
+      setVouchLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(middlemanId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleUnvouch = async (middlemanId: string) => {
+    setVouchLoading(prev => new Set(prev).add(middlemanId));
+
+    try {
+      await apiService.unvouchForMiddleman(middlemanId);
+      
+      // Update local state for immediate UI feedback
+      setUserVouchedMiddlemen(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(middlemanId);
+        return newSet;
+      });
+      
+      // Trigger data refetch to get updated vouch count and credibility score
+      setVouchStatusVersion(prev => prev + 1);
+
+      toast.success('Successfully removed vouch');
+    } catch (error) {
+      console.error('Error removing vouch:', error);
+      toast.error('Failed to remove vouch');
+    } finally {
+      setVouchLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(middlemanId);
+        return newSet;
+      });
     }
   };
 
@@ -361,6 +469,14 @@ export function MiddlemanDirectory() {
                           <span className="text-sm font-medium ml-1">{mm.rating}.0</span>
                           <span className="text-sm text-muted-foreground">({mm.vouchCount} vouches)</span>
                         </div>
+                        
+                        {/* Credibility Score */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge className="bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300">
+                            <Heart className="w-3 h-3 mr-1" />
+                            {mm.credibilityScore} credibility
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
@@ -401,14 +517,73 @@ export function MiddlemanDirectory() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-2 border-t border-border">
-                      <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
-                        <MessageSquare className="w-3 h-3 mr-1" />
-                        Request Service
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        View Profile
-                      </Button>
+                    <div className="pt-2 border-t border-border space-y-3">
+                      {/* Rating Section */}
+                      {user && user.id !== mm.id.toString() && !userVouchedMiddlemen.has(mm.id.toString()) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Rate:</span>
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                className="text-yellow-400 hover:text-yellow-500 transition-colors disabled:opacity-50"
+                                onClick={() => handleVouch(mm.id.toString(), star)}
+                                disabled={vouchLoading.has(mm.id.toString())}
+                                title={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                              >
+                                <Star className={`w-5 h-5 ${vouchLoading.has(mm.id.toString()) ? 'opacity-50' : ''}`} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Vouch/Contact Section */}
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          {user && user.id !== mm.id.toString() ? (
+                            userVouchedMiddlemen.has(mm.id.toString()) ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="w-full bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100 dark:bg-pink-950 dark:border-pink-800 dark:text-pink-300"
+                                onClick={() => handleUnvouch(mm.id.toString())}
+                                disabled={vouchLoading.has(mm.id.toString())}
+                              >
+                                {vouchLoading.has(mm.id.toString()) ? (
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Heart className="w-3 h-3 mr-1 fill-current" />
+                                )}
+                                {vouchLoading.has(mm.id.toString()) ? 'Removing...' : 'Unvouch'}
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                                onClick={() => handleVouch(mm.id.toString(), 5)}
+                                disabled={vouchLoading.has(mm.id.toString())}
+                              >
+                                {vouchLoading.has(mm.id.toString()) ? (
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Heart className="w-3 h-3 mr-1" />
+                                )}
+                                {vouchLoading.has(mm.id.toString()) ? 'Vouching...' : 'Vouch'}
+                              </Button>
+                            )
+                          ) : (
+                            <div className="text-xs text-muted-foreground text-center py-2 border rounded">
+                              {user ? 'Cannot vouch for yourself' : 'Login to vouch'}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <Button variant="outline" size="sm" className="flex-1">
+                          <MessageSquare className="w-3 h-3 mr-1" />
+                          Contact
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

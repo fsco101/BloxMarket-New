@@ -1,11 +1,13 @@
 import { MiddlemanApplication } from '../models/MiddlemanApplication.js';
 import { VerificationDocument } from '../models/VerificationDocument.js';
 import { User } from '../models/User.js';
+import { MiddlemanVouch } from '../models/MiddlemanVouch.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -415,9 +417,9 @@ export const verificationController = {
       const middlemen = await User.find({
         role: 'middleman',
         is_active: true
-      }).select('_id username roblox_username avatar_url credibility_score bio timezone');
+      }).select('_id username roblox_username avatar_url credibility_score vouch_count bio timezone');
       
-      // Enhance with trade and vouch data
+      // Enhance with trade data and rating calculation
       const enhancedMiddlemen = await Promise.all(middlemen.map(async (mm) => {
         const middleman = mm.toObject();
         
@@ -430,30 +432,27 @@ export const verificationController = {
           console.error('Error counting trades:', err);
         }
         
-        // Get vouch count and average rating
-        let vouchCount = 0;
+        // Get average rating from middleman vouches
         let averageRating = 0;
+        let totalRatingSum = 0;
+        let vouchCount = 0;
         try {
-          const { Vouch } = await import('../models/Vouch.js');
-          vouchCount = await Vouch.countDocuments({
-            user_id: mm._id,
-            status: 'approved'
-          });
+          const vouchData = await MiddlemanVouch.aggregate([
+            { $match: { middleman_id: mm._id, status: 'approved' }},
+            { $group: { _id: null, avgRating: { $avg: '$rating' }, totalRating: { $sum: '$rating' }, count: { $sum: 1 }}}
+          ]);
           
-          // Get average rating if vouches exist
-          if (vouchCount > 0) {
-            const vouchData = await Vouch.aggregate([
-              { $match: { user_id: mm._id, status: 'approved' }},
-              { $group: { _id: null, avgRating: { $avg: '$rating' }}}
-            ]);
-            
-            if (vouchData.length > 0) {
-              averageRating = vouchData[0].avgRating;
-            }
+          if (vouchData.length > 0) {
+            averageRating = vouchData[0].avgRating || 0;
+            totalRatingSum = vouchData[0].totalRating || 0;
+            vouchCount = vouchData[0].count || 0;
           }
         } catch (err) {
-          console.error('Error processing vouches:', err);
+          console.error('Error calculating average rating:', err);
         }
+        
+        // Calculate credibility score as sum of ratings * 2
+        const credibilityScore = totalRatingSum * 2;
         
         // Get verification date
         let verificationDate = null;
@@ -470,7 +469,8 @@ export const verificationController = {
           ...middleman,
           trades: tradeCount,
           vouches: vouchCount,
-          rating: averageRating,
+          rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+          credibility_score: credibilityScore, // Override with calculated value
           verificationDate
         };
       }));
@@ -481,6 +481,239 @@ export const verificationController = {
     } catch (error) {
       console.error('Error fetching middlemen:', error);
       res.status(500).json({ error: 'Failed to fetch middlemen' });
+    }
+  },
+
+  // Vouch for a middleman
+  vouchForMiddleman: async (req, res) => {
+    try {
+      const { middlemanId } = req.params;
+      const { rating, comment } = req.body;
+      const userId = req.user.userId;
+
+      // Validate rating
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+      }
+
+      // Ensure IDs are ObjectIds
+      const middlemanObjectId = mongoose.Types.ObjectId.isValid(middlemanId) 
+        ? new mongoose.Types.ObjectId(middlemanId) 
+        : middlemanId;
+      const userObjectId = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+
+      // Check if middleman exists and is active
+      const middleman = await User.findOne({
+        _id: middlemanObjectId,
+        role: 'middleman',
+        is_active: true
+      });
+
+      if (!middleman) {
+        return res.status(404).json({ error: 'Middleman not found or not active' });
+      }
+
+      // Check if user is trying to vouch for themselves
+      if (middlemanId === userId) {
+        return res.status(400).json({ error: 'You cannot vouch for yourself' });
+      }
+
+      // Check if user has already vouched for this middleman
+      const existingVouch = await MiddlemanVouch.findOne({
+        middleman_id: middlemanObjectId,
+        given_by_user_id: userObjectId
+      });
+
+      if (existingVouch) {
+        return res.status(400).json({ error: 'You have already vouched for this middleman' });
+      }
+
+      // Create the vouch
+      const vouch = new MiddlemanVouch({
+        middleman_id: middlemanObjectId,
+        given_by_user_id: userObjectId,
+        rating,
+        comment: comment || ''
+      });
+
+      await vouch.save();
+
+      // Update middleman's vouch count and credibility score
+      const totalVouches = await MiddlemanVouch.countDocuments({
+        middleman_id: middlemanObjectId,
+        status: 'approved'
+      });
+
+      // Calculate credibility score as sum of all ratings * 2
+      const ratingSumResult = await MiddlemanVouch.aggregate([
+        { $match: { middleman_id: middlemanObjectId, status: 'approved' }},
+        { $group: { _id: null, totalRating: { $sum: '$rating' }}}
+      ]);
+      
+      const totalRatingSum = ratingSumResult.length > 0 ? ratingSumResult[0].totalRating : 0;
+      const credibilityScore = totalRatingSum * 2; // +2 points per star rating
+
+      await User.updateOne(
+        { _id: middlemanObjectId },
+        {
+          $set: {
+            vouch_count: totalVouches,
+            credibility_score: credibilityScore
+          }
+        }
+      );
+
+      res.status(201).json({
+        message: 'Successfully vouched for middleman',
+        vouch: {
+          id: vouch._id,
+          rating: vouch.rating,
+          comment: vouch.comment,
+          createdAt: vouch.createdAt
+        }
+      });
+    } catch (error) {
+      console.error('Error vouching for middleman:', error);
+      res.status(500).json({ error: 'Failed to vouch for middleman' });
+    }
+  },
+
+  // Remove vouch for a middleman
+  unvouchForMiddleman: async (req, res) => {
+    try {
+      const { middlemanId } = req.params;
+      const userId = req.user.userId;
+
+      // Ensure IDs are ObjectIds
+      const middlemanObjectId = mongoose.Types.ObjectId.isValid(middlemanId) 
+        ? new mongoose.Types.ObjectId(middlemanId) 
+        : middlemanId;
+      const userObjectId = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+
+      // Find and delete the vouch
+      const vouch = await MiddlemanVouch.findOneAndDelete({
+        middleman_id: middlemanObjectId,
+        given_by_user_id: userObjectId
+      });
+
+      if (!vouch) {
+        return res.status(404).json({ error: 'Vouch not found' });
+      }
+
+      // Update middleman's vouch count and credibility score
+      const totalVouches = await MiddlemanVouch.countDocuments({
+        middleman_id: middlemanObjectId,
+        status: 'approved'
+      });
+
+      // Calculate credibility score as sum of all ratings * 2
+      const ratingSumResult = await MiddlemanVouch.aggregate([
+        { $match: { middleman_id: middlemanObjectId, status: 'approved' }},
+        { $group: { _id: null, totalRating: { $sum: '$rating' }}}
+      ]);
+      
+      const totalRatingSum = ratingSumResult.length > 0 ? ratingSumResult[0].totalRating : 0;
+      const credibilityScore = totalRatingSum * 2; // +2 points per star rating
+
+      await User.updateOne(
+        { _id: middlemanObjectId },
+        {
+          $set: {
+            vouch_count: totalVouches,
+            credibility_score: credibilityScore
+          }
+        }
+      );
+
+      res.status(200).json({
+        message: 'Successfully removed vouch for middleman'
+      });
+    } catch (error) {
+      console.error('Error removing vouch for middleman:', error);
+      res.status(500).json({ error: 'Failed to remove vouch for middleman' });
+    }
+  },
+
+  // Get vouches for a middleman
+  getMiddlemanVouches: async (req, res) => {
+    try {
+      const { middlemanId } = req.params;
+
+      // Ensure ID is ObjectId
+      const middlemanObjectId = mongoose.Types.ObjectId.isValid(middlemanId) 
+        ? new mongoose.Types.ObjectId(middlemanId) 
+        : middlemanId;
+
+      const vouches = await MiddlemanVouch.find({
+        middleman_id: middlemanObjectId,
+        status: 'approved'
+      })
+      .populate('given_by_user_id', 'username avatar_url')
+      .sort({ createdAt: -1 });
+
+      // Calculate average rating
+      const totalVouches = vouches.length;
+      const averageRating = totalVouches > 0
+        ? vouches.reduce((sum, vouch) => sum + vouch.rating, 0) / totalVouches
+        : 0;
+
+      res.status(200).json({
+        vouches: vouches.map(vouch => ({
+          id: vouch._id,
+          rating: vouch.rating,
+          comment: vouch.comment,
+          givenBy: {
+            id: vouch.given_by_user_id._id,
+            username: vouch.given_by_user_id.username,
+            avatar: vouch.given_by_user_id.avatar_url
+          },
+          createdAt: vouch.createdAt
+        })),
+        totalVouches,
+        averageRating: Math.round(averageRating * 10) / 10
+      });
+    } catch (error) {
+      console.error('Error fetching middleman vouches:', error);
+      res.status(500).json({ error: 'Failed to fetch middleman vouches' });
+    }
+  },
+
+  // Check if user has vouched for a middleman
+  hasUserVouchedForMiddleman: async (req, res) => {
+    try {
+      const { middlemanId } = req.params;
+      const userId = req.user.userId;
+
+      // Ensure IDs are ObjectIds for proper matching
+      const middlemanObjectId = mongoose.Types.ObjectId.isValid(middlemanId) 
+        ? new mongoose.Types.ObjectId(middlemanId) 
+        : middlemanId;
+      const userObjectId = mongoose.Types.ObjectId.isValid(userId) 
+        ? new mongoose.Types.ObjectId(userId) 
+        : userId;
+
+      const vouch = await MiddlemanVouch.findOne({
+        middleman_id: middlemanObjectId,
+        given_by_user_id: userObjectId,
+        status: 'approved'
+      });
+
+      res.status(200).json({
+        hasVouched: !!vouch,
+        vouch: vouch ? {
+          id: vouch._id,
+          rating: vouch.rating,
+          comment: vouch.comment,
+          createdAt: vouch.createdAt
+        } : null
+      });
+    } catch (error) {
+      console.error('Error checking user vouch status:', error);
+      res.status(500).json({ error: 'Failed to check vouch status' });
     }
   }
 };

@@ -134,7 +134,7 @@ const wishlistDatatableController = {
 
       // Get comment count
       const commentCount = await mongoose.connection.db.collection('wishlist_comments')
-        .countDocuments({ wishlist_id: mongoose.Types.ObjectId(wishlistId) });
+        .countDocuments({ wishlist_id: new mongoose.Types.ObjectId(wishlistId) });
 
       const enrichedWishlist = {
         wishlist_id: wishlist._id.toString(),

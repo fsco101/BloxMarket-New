@@ -31,6 +31,12 @@ router.get('/my-application', verificationController.getUserApplicationStatus);
 // Public routes (accessible by all authenticated users)
 router.get('/middlemen', verificationController.getActiveMiddlemen);
 
+// Middleman vouch routes
+router.post('/middlemen/:middlemanId/vouch', verificationController.vouchForMiddleman);
+router.delete('/middlemen/:middlemanId/vouch', verificationController.unvouchForMiddleman);
+router.get('/middlemen/:middlemanId/vouches', verificationController.getMiddlemanVouches);
+router.get('/middlemen/:middlemanId/vouch-status', verificationController.hasUserVouchedForMiddleman);
+
 // Routes that require admin privileges
 router.use(requireAdmin);
 

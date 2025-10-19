@@ -56,6 +56,21 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: 50
   },
+  messenger_link: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  },
+  website: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  },
+  location: {
+    type: String,
+    trim: true,
+    maxlength: 100
+  },
   timezone: {
     type: String,
     trim: true,

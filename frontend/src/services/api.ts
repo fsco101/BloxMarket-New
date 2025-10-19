@@ -744,10 +744,14 @@ class ApiService {
     robloxUsername?: string;
     bio?: string;
     discordUsername?: string;
-    timezone?: string;
+    messengerLink?: string;
+    website?: string;
+    location?: string;
+    currentPassword?: string;
+    newPassword?: string;
   }) {
-    return this.request('/users/profile', {
-      method: 'PUT',
+    return this.request('/users/me', {
+      method: 'PATCH',
       body: JSON.stringify(profileData),
     });
   }
@@ -1860,6 +1864,28 @@ class ApiService {
 
   async hasUserVouchedForTrade(tradeId: string) {
     return this.request(`/vouches/trade/${tradeId}/check`);
+  }
+
+  // Middleman vouch methods
+  async vouchForMiddleman(middlemanId: string, rating: number, comment?: string) {
+    return this.request(`/verification/middlemen/${middlemanId}/vouch`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, comment })
+    });
+  }
+
+  async unvouchForMiddleman(middlemanId: string) {
+    return this.request(`/verification/middlemen/${middlemanId}/vouch`, {
+      method: 'DELETE'
+    });
+  }
+
+  async getMiddlemanVouches(middlemanId: string) {
+    return this.request(`/verification/middlemen/${middlemanId}/vouches`);
+  }
+
+  async hasUserVouchedForMiddleman(middlemanId: string) {
+    return this.request(`/verification/middlemen/${middlemanId}/vouch-status`);
   }
 }
 

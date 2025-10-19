@@ -4,6 +4,7 @@ import { Vouch } from '../models/Vouch.js';
 import { Wishlist } from '../models/Wishlist.js';
 import mongoose from 'mongoose';
 import fs from 'fs';
+import bcrypt from 'bcryptjs';
 
 export const userController = {
   // Get current user profile
@@ -34,6 +35,9 @@ export const userController = {
           avatar_url: user.avatar_url,
           bio: user.bio,
           discord_username: user.discord_username,
+          messenger_link: user.messenger_link,
+          website: user.website,
+          location: user.location,
           verification_requested: user.verification_requested,
           middleman_requested: user.middleman_requested,
           is_verified: user.is_verified,
@@ -85,6 +89,9 @@ export const userController = {
           avatar_url: user.avatar_url,
           bio: user.bio,
           discord_username: user.discord_username,
+          messenger_link: user.messenger_link,
+          website: user.website,
+          location: user.location,
           is_verified: user.is_verified,
           is_middleman: user.is_middleman,
           createdAt: user.createdAt
@@ -107,15 +114,51 @@ export const userController = {
   updateProfile: async (req, res) => {
     try {
       const userId = req.user.userId;
-      const { bio, discordUsername } = req.body;
+      const {
+        username,
+        robloxUsername,
+        bio,
+        discordUsername,
+        messengerLink,
+        website,
+        location,
+        timezone,
+        currentPassword,
+        newPassword
+      } = req.body;
 
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
 
+      // Handle password change
+      if (newPassword) {
+        if (!currentPassword) {
+          return res.status(400).json({ error: 'Current password is required to change password' });
+        }
+
+        // Verify current password
+        const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isValidPassword) {
+          return res.status(400).json({ error: 'Current password is incorrect' });
+        }
+
+        // Hash new password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        user.password_hash = hashedPassword;
+      }
+
+      // Update profile fields
+      if (username !== undefined) user.username = username;
+      if (robloxUsername !== undefined) user.roblox_username = robloxUsername;
       if (bio !== undefined) user.bio = bio;
       if (discordUsername !== undefined) user.discord_username = discordUsername;
+      if (messengerLink !== undefined) user.messenger_link = messengerLink;
+      if (website !== undefined) user.website = website;
+      if (location !== undefined) user.location = location;
+      if (timezone !== undefined) user.timezone = timezone;
 
       await user.save();
 
@@ -124,13 +167,32 @@ export const userController = {
         user: {
           _id: user._id,
           username: user.username,
+          roblox_username: user.roblox_username,
           bio: user.bio,
-          discord_username: user.discord_username
+          discord_username: user.discord_username,
+          messenger_link: user.messenger_link,
+          website: user.website,
+          location: user.location,
+          timezone: user.timezone
         }
       });
 
     } catch (error) {
       console.error('Update profile error:', error);
+      
+      // Handle MongoDB duplicate key errors
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+        const fieldName = field === 'username' ? 'Username' : field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return res.status(400).json({ error: `${fieldName} already exists` });
+      }
+      
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const messages = Object.values(error.errors).map(err => err.message);
+        return res.status(400).json({ error: messages.join(', ') });
+      }
+      
       res.status(500).json({ error: 'Failed to update profile' });
     }
   },
