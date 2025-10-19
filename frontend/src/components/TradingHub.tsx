@@ -983,7 +983,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
 
           {canEdit ? (
             <>
-              <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+              <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => setCurrentPage(`profile-${trade.user_id}`)}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Message
               </Button>
@@ -1010,7 +1010,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
             </>
           ) : (
             <>
-              <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+              <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => setCurrentPage(`profile-${trade.user_id}`)}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Contact Trader
               </Button>
@@ -2322,7 +2322,7 @@ export function TradingHub() {
                           {/* Show different buttons based on trade status */}
                           {trade.status === 'open' || trade.status === 'in_progress' ? (
                             <>
-                              <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                              <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => setAppCurrentPage(`profile-${trade.user_id}`)}>
                                 <MessageSquare className="w-3 h-3 mr-1" />
                                 Message
                               </Button>
@@ -2369,7 +2369,7 @@ export function TradingHub() {
                             </>
                           ) : (
                             <>
-                              <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                              <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => setAppCurrentPage(`profile-${trade.user_id}`)}>
                                 <MessageSquare className="w-3 h-3 mr-1" />
                                 Message
                               </Button>
@@ -2404,7 +2404,7 @@ export function TradingHub() {
                         </>
                       ) : (
                         <>
-                          <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                          <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => setAppCurrentPage(`profile-${trade.user_id}`)}>
                             <MessageSquare className="w-3 h-3 mr-1" />
                             Message
                           </Button>

@@ -601,7 +601,10 @@ export function MiddlemanDirectory() {
                           variant="outline" 
                           size="sm" 
                           className="flex-1"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMiddlemanClick(mm.id.toString());
+                          }}
                         >
                           <MessageSquare className="w-3 h-3 mr-1" />
                           Message

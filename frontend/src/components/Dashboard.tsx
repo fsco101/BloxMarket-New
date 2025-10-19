@@ -1660,7 +1660,10 @@ export function Dashboard() {
                     <Button
                       size="sm"
                       className="bg-blue-500 hover:bg-blue-600 text-white"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUserClick(post.user.id || post.user.username);
+                      }}
                     >
                       Message
                     </Button>

@@ -583,7 +583,7 @@ function WishlistDetailsModal({
 
             {canEdit ? (
               <>
-                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => onUserClick && onUserClick(wishlist.user_id)}>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Make Offer
                 </Button>
@@ -610,7 +610,7 @@ function WishlistDetailsModal({
               </>
             ) : (
               <>
-                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => onUserClick && onUserClick(wishlist.user_id)}>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Make Offer
                 </Button>
@@ -1751,7 +1751,7 @@ export function Wishlist() {
                       </Button>
                     )}
                     
-                    <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white">
+                    <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white" onClick={() => handleUserClick(item.user_id)}>
                       <MessageSquare className="w-3 h-3 mr-1" />
                       Message
                     </Button>

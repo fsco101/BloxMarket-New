@@ -687,7 +687,7 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
           <div className="flex gap-3 pt-4 border-t">
             {canEdit ? (
               <>
-                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => onUserClick(post.user_id)}>
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Reply to Post
                 </Button>
@@ -720,7 +720,7 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
               </>
             ) : (
               <>
-                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
+                <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => onUserClick(post.user_id)}>
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Reply to Post
                 </Button>
@@ -1813,9 +1813,9 @@ export function Forums() {
                       </Button>
                     )}
                     
-                    <Button size="sm" variant="outline">
+                        <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white" onClick={() => handleUserClick(post.user_id)}>
                       <MessageCircle className="w-3 h-3 mr-1" />
-                      Reply
+                      Message
                     </Button>
                   </div>
                 </div>
