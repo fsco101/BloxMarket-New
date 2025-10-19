@@ -148,19 +148,6 @@ export function Sidebar() {
               <p className="font-medium text-sm text-sidebar-foreground truncate">
                 {user?.username || 'User'}
               </p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">
-                {(user as any)?.roblox_username || 'No Roblox linked'}
-              </p>
-              <div className="flex items-center gap-1 mt-1">
-                <div className="flex">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className={`w-2 h-2 ${i < ((user as any)?.rating || 0) ? 'bg-yellow-400' : 'bg-gray-300'}`} />
-                  ))}
-                </div>
-                <span className="text-xs text-sidebar-foreground/60 ml-1">
-                  ({(user as any)?.totalVouches || 0} vouches)
-                </span>
-              </div>
             </div>
           </div>
           <NotificationBell />

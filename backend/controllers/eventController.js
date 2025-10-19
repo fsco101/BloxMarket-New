@@ -191,7 +191,7 @@ export const eventController = {
         creator: {
           user_id: userId,
           username: user.username,
-          avatar: user.avatar,
+          avatar_url: user.avatar_url,
           verified: user.verified || false
         }
       });
@@ -485,7 +485,7 @@ export const eventController = {
       event.participants.push({
         user_id: userId,
         username: user.username,
-        avatar: user.avatar
+        avatar_url: user.avatar_url
       });
       
       event.participantCount = event.participants.length;
@@ -701,7 +701,7 @@ export const eventController = {
 
       // Get comments for this event
       const comments = await EventComment.find({ event_id: eventId })
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .sort({ created_at: -1 })
         .lean();
 
@@ -776,7 +776,7 @@ export const eventController = {
       }
 
       // Populate user data
-      await comment.populate('user_id', 'username credibility_score');
+      await comment.populate('user_id', 'username credibility_score avatar_url');
 
       const responseData = {
         comment_id: comment._id,

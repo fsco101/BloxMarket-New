@@ -8,6 +8,7 @@ import { Wishlist } from './components/Wishlist';
 import { MiddlemanDirectory } from './components/MiddlemanDirectory';
 import { Forums } from './components/Forums';
 import { NewUserProfile } from './components/NewUserProfile';
+import { ProfileView } from './components/ProfileView';
 import { AdminPanel } from './components/AdminPanel';
 import { EventsGiveaways } from './components/EventsGiveaways';
 import { apiService } from './services/api';
@@ -304,6 +305,10 @@ export default function App() {
       case 'notifications':
         return <NotificationsPage />;
       default:
+        // Handle profile pages with user ID (format: profile-{userId})
+        if (currentPage.startsWith('profile-')) {
+          return <ProfileView />;
+        }
         return <Dashboard />;
     }
   };

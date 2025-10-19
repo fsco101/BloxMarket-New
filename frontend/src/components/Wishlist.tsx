@@ -31,7 +31,7 @@ import {
   Flag
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../App';
+import { useAuth, useApp } from '../App';
 
 interface WishlistItem {
   wishlist_id: string;
@@ -80,6 +80,7 @@ interface WishlistDetailsModalProps {
   canDelete: boolean;
   deleteLoading: boolean;
   onReport?: (wishlist: WishlistItem) => void;
+  onUserClick?: (userId: string) => void;
 }
 
 interface ReportModalProps {
@@ -120,7 +121,8 @@ function WishlistDetailsModal({
   canEdit, 
   canDelete, 
   deleteLoading,
-  onReport 
+  onReport,
+  onUserClick 
 }: WishlistDetailsModalProps) {
   const [comments, setComments] = useState<WishlistComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -318,7 +320,12 @@ function WishlistDetailsModal({
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{wishlist.username}</span>
+                <span 
+                  className="font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => onUserClick && onUserClick(wishlist.user_id)}
+                >
+                  {wishlist.username}
+                </span>
               </div>
               <div className="text-sm text-muted-foreground">
                 Posted on {new Date(wishlist.created_at).toLocaleDateString()} at {new Date(wishlist.created_at).toLocaleTimeString()}
@@ -516,7 +523,15 @@ function WishlistDetailsModal({
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{comment.username}</span>
+                        <span 
+                          className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUserClick?.(comment.user_id);
+                          }}
+                        >
+                          {comment.username}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(comment.created_at).toLocaleDateString('en-US', {
                             month: 'short',
@@ -733,6 +748,7 @@ function ReportModal({ isOpen, onClose, onSubmit, wishlistId }: ReportModalProps
 
 export function Wishlist() {
   const { isLoggedIn } = useAuth();
+  const { setCurrentPage } = useApp();
 
   // Debug authentication status
   useEffect(() => {
@@ -756,7 +772,7 @@ export function Wishlist() {
   const [createLoading, setCreateLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageNumber, setPageNumber] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
@@ -815,7 +831,7 @@ export function Wishlist() {
       setLoading(true);
       setError('');
       const params: Record<string, string | number> = {
-        page: currentPage,
+        page: pageNumber,
         limit: 10
       };
       
@@ -837,7 +853,7 @@ export function Wishlist() {
           
           // Only update current page if response.pagination.page is valid
           if (response.pagination.page && response.pagination.page > 0) {
-            setCurrentPage(response.pagination.page);
+            setPageNumber(response.pagination.page);
           }
         }
       } else if (Array.isArray(response)) {
@@ -855,7 +871,7 @@ export function Wishlist() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filterCategory]);
+  }, [pageNumber, filterCategory]);
 
   useEffect(() => {
     loadWishlists();
@@ -902,6 +918,22 @@ export function Wishlist() {
   const handleWishlistClick = (wishlist: WishlistItem) => {
     setSelectedWishlist(wishlist);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleUserClick = (userId: string) => {
+    if (!userId) {
+      toast.error('User ID not available');
+      return;
+    }
+    
+    // Check if userId looks like a valid MongoDB ObjectId (24 hex characters)
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(userId)) {
+      toast.error('Profile viewing not available for this user');
+      return;
+    }
+    
+    setCurrentPage(`profile-${userId}`);
   };
 
   const handleEditFromModal = () => {
@@ -1572,7 +1604,7 @@ export function Wishlist() {
           </div>
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-green-500" />
-            <span>Page {currentPage}</span>
+            <span>Page {pageNumber}</span>
           </div>
           {loading && (
             <div className="flex items-center gap-2">
@@ -1620,7 +1652,15 @@ export function Wishlist() {
                       </div>
                       
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-sm">{item.username}</span>
+                        <span 
+                          className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserClick(item.user_id);
+                          }}
+                        >
+                          {item.username}
+                        </span>
                       </div>
                       
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -1736,6 +1776,7 @@ export function Wishlist() {
         canDelete={selectedWishlist ? canDeleteWishlist(selectedWishlist) : false}
         deleteLoading={selectedWishlist ? deleteLoading === selectedWishlist.wishlist_id : false}
         onReport={handleReportWishlist}
+        onUserClick={handleUserClick}
       />
 
       {/* Report Modal */}

@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { ContentCard, UniversalCardHeader, UniversalCardContent } from './ui/universal-layout';
+import { useAuth, useApp } from '../App';
+import { ProfileView } from './ProfileView';
 import { 
   MessageSquare, 
   Flag, 
@@ -104,6 +106,7 @@ interface DashboardPost {
   title: string;
   description: string;
   user: {
+    id?: string; // Add user ID field
     username: string;
     robloxUsername?: string;
     rating: number;
@@ -162,7 +165,10 @@ const getAvatarUrl = (avatarUrl?: string) => {
     return `http://localhost:5000${avatarUrl}`;
   }
 
-  return `http://localhost:5000/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Processing filename:', avatarUrl);
+  const fullUrl = `http://localhost:5000/api/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Generated URL:', fullUrl);
+  return fullUrl;
 };
 
 // ImageViewer Component
@@ -438,6 +444,7 @@ function ReportModal({ post, isOpen, onClose }: { post: DashboardPost | null; is
 
 // New Post Modal Component with unified voting system
 function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostModalProps) {
+  const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<any[]>([]);
@@ -448,6 +455,9 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [votingLoading, setVotingLoading] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+
+  console.log('PostModal user data:', user);
+  console.log('PostModal user avatar_url:', user?.avatar_url);
 
   // Load comments and votes when modal opens
   useEffect(() => {
@@ -771,7 +781,7 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
   };
 
   const handleUserClick = () => {
-    onUserClick(post.id);
+    onUserClick(post.user.id || post.user.username);
     onClose();
   };
 
@@ -813,6 +823,14 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
               <div className="flex items-center gap-4">
                 <button onClick={handleUserClick} className="flex items-center gap-4 hover:bg-muted/50 rounded-lg p-2 transition-colors">
                   <Avatar className="w-12 h-12">
+                    <AvatarImage
+                      src={getAvatarUrl(post.user.avatar_url)}
+                      className="object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '';
+                      }}
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg">
                       {post.user.username[0]?.toUpperCase()}
                     </AvatarFallback>
@@ -958,6 +976,14 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                   comments.map((comment) => (
                     <div key={comment.comment_id || comment.id} className="flex gap-5">
                       <Avatar className="w-12 h-12">
+                        <AvatarImage
+                          src={getAvatarUrl(comment.user?.avatar_url)}
+                          className="object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '';
+                          }}
+                        />
                         <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-base font-semibold">
                           {(comment.user?.username || comment.username || 'U')[0].toUpperCase()}
                         </AvatarFallback>
@@ -965,7 +991,12 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                       <div className="flex-1">
                         <div className="bg-muted/50 rounded-xl p-5">
                           <div className="flex items-center gap-4 mb-3">
-                            <span className="font-semibold text-base">{comment.user?.username || comment.username}</span>
+                            <span 
+                              className="font-semibold text-base cursor-pointer hover:text-primary transition-colors"
+                              onClick={() => onUserClick && onUserClick(comment.user?._id || comment.user_id)}
+                            >
+                              {comment.user?.username || comment.username}
+                            </span>
                             {comment.user?.credibility_score && (
                               <Badge variant="secondary" className="text-xs">
                                 {comment.user.credibility_score}★
@@ -1003,6 +1034,14 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
             <div className="p-8 border-t bg-muted/20">
               <div className="flex gap-5">
                 <Avatar className="w-12 h-12">
+                  <AvatarImage
+                    src={getAvatarUrl(user?.avatar_url as string)}
+                    className="object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '';
+                    }}
+                  />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-base font-semibold">
                     Y
                   </AvatarFallback>
@@ -1053,10 +1092,22 @@ export function Dashboard() {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  const { setCurrentPage } = useApp();
+
   const handleUserClick = (userId: string) => {
-    toast.info(`Viewing profile for user: ${userId}`, {
-      description: 'User profile functionality coming soon!'
-    });
+    if (!userId) {
+      toast.error('User ID not available');
+      return;
+    }
+    
+    // Check if userId looks like a valid MongoDB ObjectId (24 hex characters)
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(userId)) {
+      toast.error('Profile viewing not available for this user');
+      return;
+    }
+    
+    setCurrentPage(`profile-${userId}`);
   };
 
   const handlePostClick = (post: DashboardPost) => {
@@ -1117,6 +1168,9 @@ export function Dashboard() {
               avatar_url: trade.avatar_url
             };
             
+            console.log('Trade user data:', userData);
+            console.log('Trade avatar_url:', userData.avatar_url);
+            
             // Fix image processing
             let images: Array<{ url: string; type: 'trade' | 'forum' }> = [];
             if (trade.images && trade.images.length > 0) {
@@ -1153,6 +1207,7 @@ export function Dashboard() {
               title: `Trading ${trade.item_offered}${trade.item_requested ? ` for ${trade.item_requested}` : ''}`,
               description: trade.description || `Looking to trade ${trade.item_offered}${trade.item_requested ? ` for ${trade.item_requested}` : '. Contact me for offers!'}`,
               user: {
+                id: userData._id || trade.user_id, // Add user ID
                 username: userData.username || trade.username || 'Unknown User',
                 robloxUsername: userData.roblox_username || trade.roblox_username || 'Unknown',
                 rating: Math.min(5, Math.max(1, Math.floor((userData.credibility_score || trade.credibility_score || 0) / 20))),
@@ -1192,6 +1247,9 @@ export function Dashboard() {
               console.warn('Invalid date format for forum post:', post.post_id);
             }
 
+            console.log('Forum post user data:', post);
+            console.log('Forum post avatar_url:', post.avatar_url);
+
             let images: Array<{ url: string; type: 'trade' | 'forum' }> = [];
             if (post.images && post.images.length > 0) {
               images = post.images.map(img => ({
@@ -1206,6 +1264,7 @@ export function Dashboard() {
               title: post.title,
               description: post.content && post.content.length > 200 ? post.content.substring(0, 200) + '...' : (post.content || 'No content available'),
               user: {
+                id: post.user_id, // Use the user_id from API response
                 username: post.username || 'Unknown User',
                 rating: Math.min(5, Math.max(1, Math.floor((post.credibility_score || 0) / 20))),
                 vouchCount: Math.floor((post.credibility_score || 0) / 2),
@@ -1243,6 +1302,7 @@ export function Dashboard() {
             maxParticipants?: number;
             participantCount?: number;
             creator?: {
+              user_id: string;
               username: string;
               avatar?: string;
               verified?: boolean;
@@ -1290,6 +1350,7 @@ export function Dashboard() {
               title: event.title,
               description: event.description || 'Check out this community event!',
               user: {
+                id: event.creator?.user_id, // Use the creator's user_id from API response
                 username: event.creator?.username || 'Event Host',
                 rating: 5,
                 vouchCount: 999,
@@ -1312,6 +1373,9 @@ export function Dashboard() {
               maxParticipants: event.maxParticipants,
               participantCount: event.participantCount
             });
+            
+            console.log('Event creator data:', event.creator);
+            console.log('Event avatar_url:', event.creator?.avatar_url || event.creator?.avatar);
           });
         }
 
@@ -1506,7 +1570,7 @@ export function Dashboard() {
                     <span className="ml-1 capitalize">{post.type}</span>
                   </Badge>
                 }
-                onUserClick={() => handleUserClick(post.user.username)}
+                onUserClick={() => handleUserClick(post.user.id || post.user.username)}
               />
 
               <UniversalCardContent

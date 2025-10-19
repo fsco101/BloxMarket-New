@@ -35,7 +35,7 @@ import {
   Flag
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../App';
+import { useAuth, useApp } from '../App';
 
 interface User {
   id: string;
@@ -89,6 +89,7 @@ interface PostDetailsModalProps {
   canDelete: boolean;
   deleteLoading: boolean;
   onReport?: () => void;
+  onUserClick: (userId: string) => void;
 }
 
 interface ReportModalProps {
@@ -317,7 +318,7 @@ function ReportModal({ isOpen, onClose, onSubmit, loading }: ReportModalProps) {
 }
 
 // Enhanced Post Details Modal Component with upvote/downvote and comments
-function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport }: PostDetailsModalProps) {
+function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport, onUserClick }: PostDetailsModalProps) {
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -480,7 +481,15 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{post.username}</span>
+                <span 
+                  className="font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUserClick(post.user_id);
+                  }}
+                >
+                  {post.username}
+                </span>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                   {post.credibility_score || 0}★
                 </Badge>
@@ -626,7 +635,15 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{comment.username}</span>
+                        <span 
+                          className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUserClick(comment.user_id);
+                          }}
+                        >
+                          {comment.username}
+                        </span>
                         {comment.credibility_score && (
                           <Badge variant="secondary" className="text-xs">
                             {comment.credibility_score}★
@@ -739,6 +756,7 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
 
 export function Forums() {
   const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { setCurrentPage: setAppCurrentPage } = useApp();
 
   useEffect(() => {
     if (authLoading || !isLoggedIn || !apiService.isAuthenticated()) return;
@@ -789,8 +807,21 @@ export function Forums() {
   // Report modal state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
-
-  // Load current user
+  const handleUserClick = (userId: string) => {
+    if (!userId) {
+      toast.error('User ID not available');
+      return;
+    }
+    
+    // Check if userId looks like a valid MongoDB ObjectId (24 hex characters)
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(userId)) {
+      toast.error('Profile viewing not available for this user');
+      return;
+    }
+    
+    setAppCurrentPage(`profile-${userId}`);
+  };
   useEffect(() => {
     const loadCurrentUser = async () => {
       try {
@@ -1649,7 +1680,15 @@ export function Forums() {
                       </div>
                       
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-sm">{post.username}</span>
+                        <span 
+                          className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUserClick(post.user_id);
+                          }}
+                        >
+                          {post.username}
+                        </span>
                       </div>
                       
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -1809,6 +1848,7 @@ export function Forums() {
         canDelete={selectedPost ? canDeletePost(selectedPost) : false}
         deleteLoading={selectedPost ? deleteLoading === selectedPost.post_id : false}
         onReport={selectedPost && currentUser && currentUser.id !== selectedPost.user_id ? () => handleReportPost(selectedPost) : undefined}
+        onUserClick={handleUserClick}
       />
 
       <ForumImageModal

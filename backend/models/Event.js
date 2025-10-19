@@ -61,7 +61,7 @@ const eventSchema = new mongoose.Schema({
       required: true
     },
     username: String,
-    avatar: String,
+    avatar_url: String,
     verified: Boolean
   },
   participants: [{
@@ -70,7 +70,7 @@ const eventSchema = new mongoose.Schema({
       ref: 'User'
     },
     username: String,
-    avatar: String,
+    avatar_url: String,
     joinedAt: {
       type: Date,
       default: Date.now

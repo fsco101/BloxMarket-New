@@ -10,7 +10,7 @@ import { Progress } from './ui/progress';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { apiService } from '../services/api';
-import { useAuth } from '../App';
+import { useAuth, useApp } from '../App';
 import { toast } from 'sonner';
 import { 
   Gift, 
@@ -48,6 +48,7 @@ interface Event {
   startDate: string;
   endDate: string;
   creator?: {
+    user_id: string;
     username: string;
     avatar?: string;
     verified?: boolean;
@@ -95,6 +96,7 @@ interface EventDetailsModalProps {
   deleteLoading: boolean;
   onJoin: (eventId: string, eventType: string) => void;
   joinLoading: string | null;
+  onUserClick: (userId: string) => void;
 }
 
 function EventDetailsModal({ 
@@ -107,7 +109,8 @@ function EventDetailsModal({
   canDelete, 
   deleteLoading,
   onJoin,
-  joinLoading
+  joinLoading,
+  onUserClick
 }: EventDetailsModalProps) {
   const [comments, setComments] = useState<EventComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -320,7 +323,15 @@ function EventDetailsModal({
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{event.creator?.username || 'Unknown'}</span>
+                  <span 
+                    className="font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUserClick(event.creator?.user_id || '');
+                    }}
+                  >
+                    {event.creator?.username || 'Unknown'}
+                  </span>
                   {event.creator?.verified && (
                     <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                       ✓
@@ -527,7 +538,15 @@ function EventDetailsModal({
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{comment.username}</span>
+                          <span 
+                            className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUserClick(comment.user_id);
+                            }}
+                          >
+                            {comment.username}
+                          </span>
                           {comment.credibility_score && (
                             <Badge variant="secondary" className="text-xs">
                               {comment.credibility_score}★
@@ -686,6 +705,7 @@ function EventDetailsModal({
 
 export function EventsGiveaways() {
   const { user } = useAuth();
+  const { setCurrentPage } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [events, setEvents] = useState<Event[]>([]);
@@ -862,6 +882,22 @@ export function EventsGiveaways() {
   const handleCloseDetailsModal = () => {
     setIsDetailsModalOpen(false);
     setSelectedEvent(null);
+  };
+
+  const handleUserClick = (userId: string) => {
+    if (!userId) {
+      toast.error('User ID not available');
+      return;
+    }
+    
+    // Check if userId looks like a valid MongoDB ObjectId (24 hex characters)
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(userId)) {
+      toast.error('Profile viewing not available for this user');
+      return;
+    }
+    
+    setCurrentPage(`profile-${userId}`);
   };
 
   // Image handling functions
@@ -1872,7 +1908,15 @@ export function EventsGiveaways() {
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{event.creator?.username || 'Unknown'}</span>
+                          <span 
+                            className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUserClick(event.creator?.user_id || '');
+                            }}
+                          >
+                            {event.creator?.username || 'Unknown'}
+                          </span>
                           {event.creator?.verified && (
                             <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                               ✓
@@ -2096,6 +2140,7 @@ export function EventsGiveaways() {
         deleteLoading={deleteLoading === selectedEvent?._id}
         onJoin={handleJoinEvent}
         joinLoading={joinLoading}
+        onUserClick={handleUserClick}
       />
 
       {/* Event Image Modal */}

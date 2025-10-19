@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardFooter } from './ui/card';import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
@@ -34,7 +34,7 @@ import {
   ImageIcon,
   Heart
 } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth, useApp } from '../App';
 import { formatDistanceToNow } from 'date-fns';
 
 const toISO = (v: unknown): string => {
@@ -109,6 +109,24 @@ const formatFullDate = (dateString: string): string => {
     console.error("Error formatting full date:", error, "Date string was:", dateString);
     return 'Unknown date';
   }
+};
+
+// Helper function to get avatar URL
+const getAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+    return `http://localhost:5000${avatarUrl}`;
+  }
+
+  console.log('getAvatarUrl: Processing filename:', avatarUrl);
+  const fullUrl = `http://localhost:5000/api/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Generated URL:', fullUrl);
+  return fullUrl;
 };
 
 interface Trade {
@@ -258,6 +276,7 @@ interface TradeDetailsModalProps {
   vouchLoading: string | null;
   userVouchedTrades: Set<string>;
   onVouch: (tradeId: string, tradeOwnerId: string) => void;
+  setCurrentPage: (page: string) => void;
 }
 
 // ImageViewer Component
@@ -465,7 +484,7 @@ function ReportModal({ post, isOpen, onClose }: { post: Trade | null; isOpen: bo
 }
 
 // Enhanced Trade Details Modal Component with upvote/downvote and comments
-function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport, currentUser, vouchLoading, userVouchedTrades, onVouch }: TradeDetailsModalProps) {
+function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport, currentUser, vouchLoading, userVouchedTrades, onVouch, setCurrentPage }: TradeDetailsModalProps) {
   const [comments, setComments] = useState<TradeComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -690,11 +709,24 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
           {/* Trader Info */}
           <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
             <Avatar className="w-12 h-12">
+              <AvatarImage
+                src={getAvatarUrl('')}
+                className="object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '';
+                }}
+              />
               <AvatarFallback>{trade.username?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{trade.username}</span>
+                <span 
+                  className="font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => setCurrentPage(`profile-${trade.user_id}`)}
+                >
+                  {trade.username}
+                </span>
               </div>
               <div className="text-sm text-muted-foreground">
                 @{trade.roblox_username}
@@ -832,6 +864,14 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
             {/* Add Comment */}
             <div className="flex gap-3 p-4 border rounded-lg bg-muted/20">
               <Avatar className="w-8 h-8">
+                <AvatarImage
+                  src={getAvatarUrl('')}
+                  className="object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '';
+                  }}
+                />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
                   Y
                 </AvatarFallback>
@@ -869,13 +909,26 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
                 comments.map((comment) => (
                   <div key={comment.comment_id} className="flex gap-3 p-3 border rounded-lg">
                     <Avatar className="w-8 h-8">
+                      <AvatarImage
+                        src={getAvatarUrl('')}
+                        className="object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '';
+                        }}
+                      />
                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
                         {comment.username[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{comment.username}</span>
+                        <span 
+                          className="font-medium text-sm cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => setCurrentPage(`profile-${comment.user_id}`)}
+                        >
+                          {comment.username}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {formatDate(toISO(comment.created_at))}
                         </span>
@@ -1068,10 +1121,12 @@ export function TradingHub() {
           roblox_username?: string;
           _id?: string;
           vouch_count?: number;
+          credibility_score?: number;
         };
         username?: string;
         roblox_username?: string;
         user_id?: string;
+        credibility_score?: number;
         images?: unknown[];
         upvotes?: number | string[] | null;
         downvotes?: number | string[] | null;
@@ -1194,6 +1249,7 @@ export function TradingHub() {
   }, [currentPage, filterCategory]);
 
   const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { setCurrentPage: setAppCurrentPage } = useApp();
 
   // Load current user data periodically to keep vouch count updated
   useEffect(() => {
@@ -2123,11 +2179,27 @@ export function TradingHub() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
+                          <AvatarImage
+                            src={getAvatarUrl('')}
+                            className="object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '';
+                            }}
+                          />
                           <AvatarFallback>{trade.username?.[0] || 'U'}</AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{trade.username}</span>
+                            <span 
+                              className="font-medium text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAppCurrentPage(`profile-${trade.user_id}`);
+                              }}
+                            >
+                              {trade.username}
+                            </span>
 
                             <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300">
                               <Heart className="w-3 h-3 mr-1" />
@@ -2390,6 +2462,7 @@ export function TradingHub() {
         vouchLoading={vouchLoading}
         userVouchedTrades={userVouchedTrades}
         onVouch={handleVouchTrade}
+        setCurrentPage={setAppCurrentPage}
       />
 
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>

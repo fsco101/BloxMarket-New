@@ -19,7 +19,7 @@ import {
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { MiddlemanApplicationForm } from './user/MiddlemanApplicationForm';
-import { useAuth } from '../App';
+import { useAuth, useApp } from '../App';
 
 // Define the Middleman interface
 interface Middleman {
@@ -66,6 +66,7 @@ interface MiddlemanApiResponse {
 
 export function MiddlemanDirectory() {
   const { user } = useAuth();
+  const { setCurrentPage } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('rating');
 
@@ -325,6 +326,10 @@ export function MiddlemanDirectory() {
     }
   };
 
+  const handleMiddlemanClick = (middlemanId: string) => {
+    setCurrentPage(`profile-${middlemanId}`);
+  };
+
   const filteredMiddlemen = middlemen.filter(mm => 
     mm.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     mm.specialties.some(specialty => specialty.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -429,7 +434,11 @@ export function MiddlemanDirectory() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {sortedMiddlemen.map((mm) => (
-                <Card key={mm.id} className="hover:shadow-lg transition-all duration-200 relative">
+                <Card 
+                  key={mm.id} 
+                  className="hover:shadow-lg transition-all duration-200 relative cursor-pointer"
+                  onClick={() => handleMiddlemanClick(mm.id.toString())}
+                >
                   {/* Status Indicator */}
                   <div className={`absolute top-4 right-4 w-3 h-3 rounded-full ${getStatusColor(mm.status)}`} />
                   
@@ -517,7 +526,7 @@ export function MiddlemanDirectory() {
                     </div>
 
                     {/* Actions */}
-                    <div className="pt-2 border-t border-border space-y-3">
+                    <div className="pt-2 border-t border-border space-y-3" onClick={(e) => e.stopPropagation()}>
                       {/* Rating Section */}
                       {user && user.id !== mm.id.toString() && !userVouchedMiddlemen.has(mm.id.toString()) && (
                         <div className="flex items-center gap-2">
@@ -527,7 +536,10 @@ export function MiddlemanDirectory() {
                               <button
                                 key={star}
                                 className="text-yellow-400 hover:text-yellow-500 transition-colors disabled:opacity-50"
-                                onClick={() => handleVouch(mm.id.toString(), star)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVouch(mm.id.toString(), star);
+                                }}
                                 disabled={vouchLoading.has(mm.id.toString())}
                                 title={`Rate ${star} star${star > 1 ? 's' : ''}`}
                               >
@@ -547,7 +559,10 @@ export function MiddlemanDirectory() {
                                 size="sm" 
                                 variant="outline"
                                 className="w-full bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100 dark:bg-pink-950 dark:border-pink-800 dark:text-pink-300"
-                                onClick={() => handleUnvouch(mm.id.toString())}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnvouch(mm.id.toString());
+                                }}
                                 disabled={vouchLoading.has(mm.id.toString())}
                               >
                                 {vouchLoading.has(mm.id.toString()) ? (
@@ -561,7 +576,10 @@ export function MiddlemanDirectory() {
                               <Button 
                                 size="sm" 
                                 className="w-full bg-pink-500 hover:bg-pink-600 text-white"
-                                onClick={() => handleVouch(mm.id.toString(), 5)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVouch(mm.id.toString(), 5);
+                                }}
                                 disabled={vouchLoading.has(mm.id.toString())}
                               >
                                 {vouchLoading.has(mm.id.toString()) ? (
@@ -579,7 +597,12 @@ export function MiddlemanDirectory() {
                           )}
                         </div>
                         
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MessageSquare className="w-3 h-3 mr-1" />
                           Message
                         </Button>

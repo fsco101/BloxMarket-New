@@ -50,6 +50,7 @@ router.get('/user/:userId', authenticateToken, forumController.getUserForumPosts
 
 // Forum interaction routes
 router.post('/posts/:postId/vote', authenticateToken, forumController.voteOnForumPost);
+router.get('/posts/:postId/comments', authenticateToken, forumController.getForumComments);
 router.post('/posts/:postId/comments', authenticateToken, forumController.addForumComment);
 
 export default router;

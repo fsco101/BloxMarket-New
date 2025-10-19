@@ -20,7 +20,7 @@ export const forumController = {
       }
 
       const posts = await ForumPost.find(query)
-        .populate('user_id', 'username vouch_count')
+        .populate('user_id', 'username vouch_count avatar_url')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -65,7 +65,7 @@ export const forumController = {
       }
 
       const post = await ForumPost.findById(postId)
-        .populate('user_id', 'username vouch_count')
+        .populate('user_id', 'username vouch_count avatar_url')
         .lean();
 
       if (!post) {
@@ -74,7 +74,7 @@ export const forumController = {
 
       // Get comments for this post
       const comments = await ForumComment.find({ post_id: postId })
-        .populate('user_id', 'username vouch_count')
+        .populate('user_id', 'username vouch_count avatar_url')
         .sort({ createdAt: -1 })
         .lean();
 
@@ -506,7 +506,7 @@ export const forumController = {
       }
 
       // Populate user data
-      await comment.populate('user_id', 'username vouch_count');
+      await comment.populate('user_id', 'username vouch_count avatar_url');
 
       const responseData = {
         comment_id: comment._id,
@@ -523,6 +523,47 @@ export const forumController = {
     } catch (error) {
       console.error('Add comment error:', error);
       res.status(500).json({ error: 'Failed to add comment' });
+    }
+  },
+
+  // Get comments for a forum post
+  getForumComments: async (req, res) => {
+    try {
+      const { postId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(postId)) {
+        return res.status(400).json({ error: 'Invalid post ID' });
+      }
+
+      // Check if post exists
+      const post = await ForumPost.findById(postId);
+      if (!post) {
+        return res.status(404).json({ error: 'Post not found' });
+      }
+
+      // Get comments for this post
+      const comments = await ForumComment.find({ post_id: postId })
+        .populate('user_id', 'username vouch_count avatar_url')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Format comments for response
+      const formattedComments = comments.map(comment => ({
+        comment_id: comment._id,
+        content: comment.content,
+        created_at: comment.createdAt,
+        username: comment.user_id.username,
+        vouch_count: comment.user_id.vouch_count,
+        user_id: comment.user_id._id
+      }));
+
+      res.json({
+        comments: formattedComments
+      });
+
+    } catch (error) {
+      console.error('Get forum comments error:', error);
+      res.status(500).json({ error: 'Failed to fetch comments' });
     }
   },
 
@@ -589,7 +630,7 @@ export const forumController = {
       }
 
       const posts = await ForumPost.find({ user_id: userId })
-        .populate('user_id', 'username vouch_count')
+        .populate('user_id', 'username vouch_count avatar_url')
         .sort({ createdAt: -1 })
         .lean();
 

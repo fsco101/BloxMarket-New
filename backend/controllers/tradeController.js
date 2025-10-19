@@ -20,7 +20,7 @@ export const tradeController = {
 
       const [trades, total] = await Promise.all([
         Trade.find(query)
-          .populate('user_id', 'username roblox_username credibility_score vouch_count')
+          .populate('user_id', 'username roblox_username credibility_score vouch_count avatar_url')
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit),
@@ -201,7 +201,7 @@ export const tradeController = {
       }
 
       const trade = await Trade.findById(tradeId)
-        .populate('user_id', 'username roblox_username credibility_score vouch_count');
+        .populate('user_id', 'username roblox_username credibility_score vouch_count avatar_url');
 
       if (!trade) {
         return res.status(404).json({ error: 'Trade not found' });
@@ -275,7 +275,7 @@ export const tradeController = {
       await trade.save();
 
       // Populate user data for the response
-      await trade.populate('user_id', 'username roblox_username credibility_score vouch_count');
+      await trade.populate('user_id', 'username roblox_username credibility_score vouch_count avatar_url');
 
       // Get updated vote/comment counts
       const [commentCount, upvotes, downvotes, vouchCount] = await Promise.all([

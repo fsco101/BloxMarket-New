@@ -25,19 +25,26 @@ import {
 } from 'lucide-react';
 
 interface ProfileData {
-  id: string;
+  _id: string;
   username: string;
   email: string;
+  roblox_username?: string;
+  bio?: string;
+  discord_username?: string;
+  messenger_link?: string;
+  website?: string;
+  avatar_url?: string;
   role: string;
   createdAt: string;
-  bio: string;
-  discord_username: string;
-  messenger_link: string;
-  website: string;
-  roblox_username: string;
-  avatar_url: string;
+  vouch_count: number;
   totalVouches: number;
-  totalWishlistItems: number;
+  wishlistItems: Array<{
+    wishlist_id: string;
+    item_name: string;
+    item_value?: string;
+    description?: string;
+    image_url?: string;
+  }>;
 }
 
 interface EditFormData {
@@ -443,7 +450,11 @@ export function NewUserProfile() {
                                   value={editForm.discordUsername}
                                   onChange={(e) => setEditForm(prev => ({ ...prev, discordUsername: e.target.value }))}
                                   placeholder="username#1234 or @username"
+                                  maxLength={50}
                                 />
+                                <div className="text-xs text-muted-foreground text-right">
+                                  {editForm.discordUsername.length}/50 characters
+                                </div>
                               </div>
 
                               <div className="space-y-2">
@@ -453,7 +464,11 @@ export function NewUserProfile() {
                                   value={editForm.messengerLink}
                                   onChange={(e) => setEditForm(prev => ({ ...prev, messengerLink: e.target.value }))}
                                   placeholder="https://m.me/username"
+                                  maxLength={200}
                                 />
+                                <div className="text-xs text-muted-foreground text-right">
+                                  {editForm.messengerLink.length}/200 characters
+                                </div>
                               </div>
                             </div>
 
@@ -464,7 +479,11 @@ export function NewUserProfile() {
                                 value={editForm.website}
                                 onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
                                 placeholder="https://twitter.com/username"
+                                maxLength={200}
                               />
+                              <div className="text-xs text-muted-foreground text-right">
+                                {editForm.website.length}/200 characters
+                              </div>
                             </div>
                           </div>
 
@@ -548,17 +567,36 @@ export function NewUserProfile() {
                       <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Vouches</div>
                     </div>
                     <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                        {profileData?.totalWishlistItems || 0}
+                      <div className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                        {profileData?.wishlistItems && profileData.wishlistItems.length > 0 ? (
+                          <div className="space-y-1">
+                            {profileData.wishlistItems.slice(0, 3).map((item) => (
+                              <div key={item.wishlist_id} className="text-sm truncate">
+                                {item.item_name}
+                              </div>
+                            ))}
+                            {profileData.wishlistItems.length > 3 && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                +{profileData.wishlistItems.length - 3} more
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          'No items'
+                        )}
                       </div>
                       <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Wishlist Items</div>
                     </div>
-                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                        {profileData?.createdAt ? new Date(profileData.createdAt).getFullYear() : 'N/A'}
+                      <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                          {profileData?.createdAt ? new Date(profileData.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          }) : 'N/A'}
+                        </div>
+                        <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Member Since</div>
                       </div>
-                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Member Since</div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -706,10 +744,27 @@ export function NewUserProfile() {
               <CardContent className="space-y-4">
                 <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">{profileData?.totalVouches || 0}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Trust Vouches</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Vouches</div>
                 </div>
                 <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{profileData?.totalWishlistItems || 0}</div>
+                  <div className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                    {profileData?.wishlistItems && profileData.wishlistItems.length > 0 ? (
+                      <div className="space-y-1">
+                        {profileData.wishlistItems.slice(0, 3).map((item) => (
+                          <div key={item.wishlist_id} className="text-sm truncate">
+                            {item.item_name}
+                          </div>
+                        ))}
+                        {profileData.wishlistItems.length > 3 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            +{profileData.wishlistItems.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      'No items'
+                    )}
+                  </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Wishlist Items</div>
                 </div>
               </CardContent>
