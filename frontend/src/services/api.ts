@@ -207,6 +207,20 @@ class ApiService {
     return data;
   }
 
+  async sendEmailVerification(email: string) {
+    return this.request('/auth/send-email-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async verifyEmailCode(email: string, code: string) {
+    return this.request('/auth/verify-email-code', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    });
+  }
+
   // Keep using the protected route that hits backend middleware auth.js
   async getCurrentUser() {
     return this.request('/auth/me', { method: 'GET' });
@@ -261,7 +275,7 @@ class ApiService {
     
     // Add images if provided
     if (images && images.length > 0) {
-      images.forEach((image, index) => {
+      images.forEach((image) => {
         formData.append('images', image);
       });
     }
@@ -307,8 +321,7 @@ class ApiService {
 
   async updateTrade(
     tradeId: string,
-    tradeData: { itemOffered: string; itemRequested?: string; description?: string },
-    images?: File[] // images are ignored by backend on edit; route doesn't handle files
+    tradeData: { itemOffered: string; itemRequested?: string; description?: string }
   ) {
     // Send JSON; backend updateTrade expects camelCase fields
     return this.request(`/trades/${tradeId}`, {
@@ -836,7 +849,7 @@ class ApiService {
     return this.request('/verification/applications');
   }
 
-  async approveVerification(userId: string, type: 'verified' | 'middleman') {
+  async approveVerification(userId: string) {
     return this.request(`/verification/applications/${userId}/review`, {
       method: 'POST',
       body: JSON.stringify({ action: 'approve' })
@@ -888,8 +901,8 @@ class ApiService {
         
         // Additional logging to check formData contents
         console.log('FormData entries:');
-        for (const pair of (formData as any).entries()) {
-          console.log(`- ${pair[0]}: ${pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]}`);
+        for (const [key, value] of formData.entries()) {
+          console.log(`- ${key}: ${value instanceof File ? `File: ${value.name}` : value}`);
         }
       }
       
@@ -918,7 +931,7 @@ class ApiService {
           if (errorData && errorData.error) {
             errorMessage = errorData.error;
           }
-        } catch (_) {
+        } catch {
           // If we can't parse JSON, use the raw text if it exists
           if (errorText) {
             errorMessage = errorText;
@@ -1190,7 +1203,7 @@ class ApiService {
     } catch (error) {
       console.error('Error fetching user trade history:', error);
       // Return empty array instead of throwing for missing endpoints
-      if (error.message.includes('Route not found') || error.message.includes('404')) {
+      if (error instanceof Error && (error.message.includes('Route not found') || error.message.includes('404'))) {
         console.warn('Trade history endpoint not available, returning empty data');
         return [];
       }
@@ -1238,7 +1251,7 @@ class ApiService {
     } catch (error) {
       console.error('Error fetching user forum posts:', error);
       // Return empty array instead of throwing for missing endpoints
-      if (error.message.includes('Route not found') || error.message.includes('404')) {
+      if (error instanceof Error && (error.message.includes('Route not found') || error.message.includes('404'))) {
         console.warn('User forum posts endpoint not available, returning empty data');
         return [];
       }
@@ -1287,12 +1300,6 @@ class ApiService {
   async getEventDetailsAdmin(eventId: string) {
     const response = await this.request(`/admin/datatables/events/${eventId}`);
     return response.event;
-  }
-
-  async deleteEventAdmin(eventId: string) {
-    return await this.request(`/admin/datatables/events/${eventId}`, {
-      method: 'DELETE'
-    });
   }
 
   async bulkDeleteEvents(eventIds: string[]) {

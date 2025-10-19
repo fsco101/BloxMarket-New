@@ -3,8 +3,9 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
+    required: function() { return this.is_active; }, // Only required when user is active
     unique: true,
+    sparse: true, // Allow multiple null values for unique constraint
     trim: true,
     maxlength: 50
   },
@@ -18,7 +19,7 @@ const userSchema = new mongoose.Schema({
   },
   password_hash: {
     type: String,
-    required: true
+    required: function() { return this.is_active; } // Only required when user is active
   },
   roblox_username: {
     type: String,
@@ -75,6 +76,18 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: 50
+  },
+  // Email verification fields
+  verificationCode: {
+    type: String,
+    trim: true
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationCodeExpires: {
+    type: Date
   },
   verification_requested: {
     type: Boolean,
