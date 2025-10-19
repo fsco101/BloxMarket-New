@@ -1,5 +1,6 @@
 import { ForumPost, ForumComment, ForumVote } from '../models/Forum.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
@@ -411,6 +412,27 @@ export const forumController = {
       post.downvotes = downvotes;
       await post.save();
 
+      // Create notification for post owner (if not voting on own post)
+      if (!post.user_id.equals(userId) && !existingVote) {
+        try {
+          const notificationType = voteType === 'up' ? 'forum_upvote' : 'forum_downvote';
+          const actionText = voteType === 'up' ? 'upvoted' : 'downvoted';
+
+          await Notification.createNotification({
+            recipient: post.user_id,
+            sender: userId,
+            type: notificationType,
+            title: `Your Post Was ${actionText}`,
+            message: `${req.user.username} ${actionText} your forum post "${post.title}"`,
+            related_id: post._id,
+            related_model: 'ForumPost'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create vote notification:', notificationError);
+          // Don't fail the vote if notification fails
+        }
+      }
+
       console.log('Final vote counts:', { upvotes, downvotes, userVote });
 
       res.json({
@@ -464,6 +486,24 @@ export const forumController = {
 
       await comment.save();
       console.log('Comment saved:', comment._id);
+
+      // Create notification for post owner (if not commenting on own post)
+      if (!post.user_id.equals(userId)) {
+        try {
+          await Notification.createNotification({
+            recipient: post.user_id,
+            sender: userId,
+            type: 'forum_comment',
+            title: 'New Comment on Your Post',
+            message: `${req.user.username} commented on your forum post "${post.title}"`,
+            related_id: comment._id,
+            related_model: 'ForumComment'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create notification:', notificationError);
+          // Don't fail the comment creation if notification fails
+        }
+      }
 
       // Populate user data
       await comment.populate('user_id', 'username vouch_count');

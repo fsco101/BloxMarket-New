@@ -1,6 +1,7 @@
 import { TradeVouch } from '../models/TradeVouch.js';
 import { User } from '../models/User.js';
 import { Trade } from '../models/Trade.js';
+import { Notification } from '../models/Notification.js';
 import mongoose from 'mongoose';
 
 // Vouch for a trade
@@ -41,6 +42,22 @@ export const vouchTrade = async (req, res) => {
 
     // Increment the vouch count for the trade owner
     await User.findByIdAndUpdate(trade.user_id, { $inc: { vouch_count: 1 } });
+
+    // Create notification for trade owner
+    try {
+      await Notification.createNotification({
+        recipient: trade.user_id,
+        sender: userId,
+        type: 'trade_vouch',
+        title: 'New Trade Vouch',
+        message: `${req.user.username} vouched for your trade "${trade.item_offered}"`,
+        related_id: newVouch._id,
+        related_model: 'Vouch'
+      });
+    } catch (notificationError) {
+      console.error('Failed to create trade vouch notification:', notificationError);
+      // Don't fail the vouch creation if notification fails
+    }
 
     res.status(201).json({
       message: 'Vouch added successfully',

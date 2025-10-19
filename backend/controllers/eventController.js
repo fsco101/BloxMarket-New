@@ -1,5 +1,6 @@
 import { Event, EventComment, EventVote } from '../models/Event.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 import mongoose from 'mongoose';
 import fs from 'fs';
 
@@ -635,6 +636,27 @@ export const eventController = {
         console.log('New vote added:', voteType);
       }
 
+      // Create notification for event creator (if not voting on own event and it's a new vote)
+      if (!event.creator.user_id.equals(userId) && !existingVote) {
+        try {
+          const notificationType = voteType === 'up' ? 'event_upvote' : 'event_downvote';
+          const actionText = voteType === 'up' ? 'upvoted' : 'downvoted';
+
+          await Notification.createNotification({
+            recipient: event.creator.user_id,
+            sender: userId,
+            type: notificationType,
+            title: `Your Event Was ${actionText}`,
+            message: `${req.user.username} ${actionText} your event "${event.title}"`,
+            related_id: event._id,
+            related_model: 'Event'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create event vote notification:', notificationError);
+          // Don't fail the vote if notification fails
+        }
+      }
+
       // Get updated vote counts
       const [upvotes, downvotes] = await Promise.all([
         EventVote.countDocuments({ event_id: eventId, vote_type: 'up' }),
@@ -734,6 +756,24 @@ export const eventController = {
 
       await comment.save();
       console.log('Comment saved:', comment._id);
+
+      // Create notification for event creator (if not commenting on own event)
+      if (!event.creator.user_id.equals(userId)) {
+        try {
+          await Notification.createNotification({
+            recipient: event.creator.user_id,
+            sender: userId,
+            type: 'event_comment',
+            title: 'New Comment on Your Event',
+            message: `${req.user.username} commented on your event "${event.title}"`,
+            related_id: comment._id,
+            related_model: 'EventComment'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create event comment notification:', notificationError);
+          // Don't fail the comment creation if notification fails
+        }
+      }
 
       // Populate user data
       await comment.populate('user_id', 'username credibility_score');

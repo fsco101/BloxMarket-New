@@ -41,6 +41,7 @@ import wishlistRoutes from './routes/wishlist.js';
 import wishlistDatatableRoutes from './routes/datatables/wishlistDatatableRoutes.js';
 import reportsDatatableRoutes from './routes/datatables/reportsDatatableRoutes.js';
 import vouchRoutes from './routes/vouches.js';
+import notificationRoutes from './routes/notifications.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -174,6 +175,7 @@ app.use('/api/reports', reportRoutes); // Add report routes
 app.use('/api/admin/datatables', userDatatableRoutes);
 app.use('/api/wishlists', wishlistRoutes); // Add this line
 app.use('/api/vouches', vouchRoutes); // Add vouches routes
+app.use('/api/notifications', notificationRoutes); // Add notifications routes
 
 // Custom rate limiter for datatable endpoints (which can be resource-intensive)
 const datatableLimiter = rateLimit({

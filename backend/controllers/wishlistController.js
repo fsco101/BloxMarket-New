@@ -1,5 +1,6 @@
 import { Wishlist, WishlistComment, WishlistVote } from '../models/Wishlist.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -752,6 +753,24 @@ class WishlistController {
 
       await comment.save();
 
+      // Create notification for wishlist owner (if not commenting on own wishlist)
+      if (!wishlist.user_id.equals(userId)) {
+        try {
+          await Notification.createNotification({
+            recipient: wishlist.user_id,
+            sender: userId,
+            type: 'wishlist_comment',
+            title: 'New Comment on Your Wishlist',
+            message: `${req.user.username} commented on your wishlist item "${wishlist.item_name}"`,
+            related_id: comment._id,
+            related_model: 'WishlistComment'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create wishlist comment notification:', notificationError);
+          // Don't fail the comment creation if notification fails
+        }
+      }
+
       // Populate user data
       const populatedComment = await WishlistComment.findById(comment._id)
         .populate('user_id', 'username credibility_score')
@@ -928,6 +947,27 @@ class WishlistController {
         
         await userVote.save();
         await wishlist.save();
+        
+        // Create notification for wishlist owner (if not voting on own wishlist)
+        if (!wishlist.user_id.equals(userId)) {
+          try {
+            const notificationType = voteType === 'up' ? 'wishlist_upvote' : 'wishlist_downvote';
+            const actionText = voteType === 'up' ? 'upvoted' : 'downvoted';
+
+            await Notification.createNotification({
+              recipient: wishlist.user_id,
+              sender: userId,
+              type: notificationType,
+              title: `Your Wishlist Item Was ${actionText}`,
+              message: `${req.user.username} ${actionText} your wishlist item "${wishlist.item_name}"`,
+              related_id: wishlist._id,
+              related_model: 'Wishlist'
+            });
+          } catch (notificationError) {
+            console.error('Failed to create wishlist vote notification:', notificationError);
+            // Don't fail the vote if notification fails
+          }
+        }
         
         return res.json({
           success: true,

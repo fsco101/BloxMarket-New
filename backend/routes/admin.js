@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -250,6 +251,22 @@ router.put('/users/:userId/role', async (req, res) => {
     });
     
     await user.save();
+    
+    // Create notification for role change
+    try {
+      await Notification.createNotification({
+        recipient: userId,
+        sender: req.user.userId,
+        type: 'admin_role_changed',
+        title: 'Role Changed',
+        message: `Your role has been changed from ${oldRole} to ${role} by ${req.user.username}`,
+        related_id: user._id,
+        related_model: 'User'
+      });
+    } catch (notificationError) {
+      console.error('Failed to create role change notification:', notificationError);
+      // Don't fail the role change if notification fails
+    }
     
     res.json({
       message: 'User role updated successfully',

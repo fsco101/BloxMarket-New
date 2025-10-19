@@ -2,6 +2,7 @@ import { MiddlemanApplication } from '../models/MiddlemanApplication.js';
 import { VerificationDocument } from '../models/VerificationDocument.js';
 import { User } from '../models/User.js';
 import { MiddlemanVouch } from '../models/MiddlemanVouch.js';
+import { Notification } from '../models/Notification.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -564,6 +565,22 @@ export const verificationController = {
           }
         }
       );
+
+      // Create notification for middleman
+      try {
+        await Notification.createNotification({
+          recipient: middlemanObjectId,
+          sender: userObjectId,
+          type: 'middleman_vouch',
+          title: 'New Middleman Vouch',
+          message: `${req.user.username} gave you a ${rating}-star vouch`,
+          related_id: vouch._id,
+          related_model: 'Vouch'
+        });
+      } catch (notificationError) {
+        console.error('Failed to create middleman vouch notification:', notificationError);
+        // Don't fail the vouch creation if notification fails
+      }
 
       res.status(201).json({
         message: 'Successfully vouched for middleman',

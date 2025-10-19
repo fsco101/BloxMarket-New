@@ -1,5 +1,6 @@
 import { Trade, TradeComment, TradeVote } from '../models/Trade.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 import mongoose from 'mongoose';
 import fs from 'fs';
 
@@ -444,6 +445,24 @@ export const tradeController = {
       const savedComment = await newComment.save();
       await savedComment.populate('user_id', 'username roblox_username credibility_score');
 
+      // Create notification for trade owner (if not commenting on own trade)
+      if (!trade.user_id.equals(userId)) {
+        try {
+          await Notification.createNotification({
+            recipient: trade.user_id,
+            sender: userId,
+            type: 'trade_comment',
+            title: 'New Comment on Your Trade',
+            message: `${req.user.username} commented on your trade "${trade.item_offered}"`,
+            related_id: savedComment._id,
+            related_model: 'TradeComment'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create trade comment notification:', notificationError);
+          // Don't fail the comment creation if notification fails
+        }
+      }
+
       res.status(201).json({
         message: 'Comment added successfully',
         comment: {
@@ -561,6 +580,27 @@ export const tradeController = {
           user_id: userId,
           vote_type: voteType
         });
+      }
+
+      // Create notification for trade owner (if not voting on own trade and it's a new vote)
+      if (!trade.user_id.equals(userId) && !existingVote) {
+        try {
+          const notificationType = voteType === 'up' ? 'trade_upvote' : 'trade_downvote';
+          const actionText = voteType === 'up' ? 'upvoted' : 'downvoted';
+
+          await Notification.createNotification({
+            recipient: trade.user_id,
+            sender: userId,
+            type: notificationType,
+            title: `Your Trade Was ${actionText}`,
+            message: `${req.user.username} ${actionText} your trade "${trade.item_offered}"`,
+            related_id: trade._id,
+            related_model: 'Trade'
+          });
+        } catch (notificationError) {
+          console.error('Failed to create trade vote notification:', notificationError);
+          // Don't fail the vote if notification fails
+        }
       }
 
       // Get updated vote counts
