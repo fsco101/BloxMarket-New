@@ -1717,7 +1717,7 @@ export function Wishlist() {
                     
                     <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white">
                       <MessageSquare className="w-3 h-3 mr-1" />
-                      Offer
+                      Message
                     </Button>
                   </div>
                 </div>

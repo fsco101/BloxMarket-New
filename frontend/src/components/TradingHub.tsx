@@ -576,6 +576,9 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
       } else {
         toast.success('Changed to upvote!');
       }
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to upvote:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -617,6 +620,9 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
       } else {
         toast.success('Changed to downvote!');
       }
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to downvote:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -655,6 +661,9 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
       setComments(prev => [mappedComment, ...prev]);
       setNewComment('');
       toast.success('Comment added!');
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to add comment:', error);
       toast.error('Failed to add comment');
@@ -923,7 +932,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
             <>
               <Button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
                 <MessageSquare className="w-4 h-4 mr-2" />
-                Contact Trader
+                Message
               </Button>
               <Button variant="outline" onClick={onEdit}>
                 <Edit className="w-4 h-4 mr-2" />
@@ -2243,7 +2252,7 @@ export function TradingHub() {
                             <>
                               <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
                                 <MessageSquare className="w-3 h-3 mr-1" />
-                                Contact
+                                Message
                               </Button>
                               <Button 
                                 variant="outline" 
@@ -2290,7 +2299,7 @@ export function TradingHub() {
                             <>
                               <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
                                 <MessageSquare className="w-3 h-3 mr-1" />
-                                Contact
+                                Message
                               </Button>
                               <Button 
                                 variant="outline" 
@@ -2325,7 +2334,7 @@ export function TradingHub() {
                         <>
                           <Button size="sm" className="flex-1 bg-blue-500 hover:bg-blue-600 text-white">
                             <MessageSquare className="w-3 h-3 mr-1" />
-                            Contact
+                            Message
                           </Button>
                           {canDeleteTrade(trade) && (
                             <Button 

@@ -1887,6 +1887,43 @@ class ApiService {
   async hasUserVouchedForMiddleman(middlemanId: string) {
     return this.request(`/verification/middlemen/${middlemanId}/vouch-status`);
   }
+
+  // Notification methods
+  async getNotifications(params?: { page?: number; limit?: number; unreadOnly?: boolean }) {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && (typeof value !== 'string' || value !== '')) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    return this.request(`/notifications?${queryParams.toString()}`);
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    return this.request(`/notifications/${notificationId}/read`, {
+      method: 'PATCH'
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request('/notifications/read-all', {
+      method: 'PATCH'
+    });
+  }
+
+  async getUnreadNotificationCount() {
+    return this.request('/notifications/unread/count');
+  }
+
+  async deleteNotification(notificationId: string) {
+    return this.request(`/notifications/${notificationId}`, {
+      method: 'DELETE'
+    });
+  }
 }
 
 export const apiService = new ApiService();

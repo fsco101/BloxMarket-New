@@ -7,13 +7,14 @@ import { TradingHub } from './components/TradingHub';
 import { Wishlist } from './components/Wishlist';
 import { MiddlemanDirectory } from './components/MiddlemanDirectory';
 import { Forums } from './components/Forums';
-import { UserProfile } from './components/UserProfile';
+import { NewUserProfile } from './components/NewUserProfile';
 import { AdminPanel } from './components/AdminPanel';
 import { EventsGiveaways } from './components/EventsGiveaways';
 import { apiService } from './services/api';
 import { MyForumPosts } from './components/user/MyForumPosts';
 import { MyTradePosts } from './components/user/MyTradePosts';
 import { MyWishlist } from './components/user/MyWishlist';
+import { NotificationsPage } from './components/NotificationsPage';
 import { Toaster } from './components/Toaster';
 import { RateLimitListener } from './components/RateLimitListener';
 
@@ -284,7 +285,7 @@ export default function App() {
       case 'events':
         return <EventsGiveaways />;
       case 'profile':
-        return <UserProfile />;
+        return <NewUserProfile />;
       case 'admin':
         // Check if user has admin or moderator role
         if (user?.role === 'admin' || user?.role === 'moderator') {
@@ -300,6 +301,8 @@ export default function App() {
         return <MyTradePosts />;
       case 'my-wishlist':
         return <MyWishlist />;
+      case 'notifications':
+        return <NotificationsPage />;
       default:
         return <Dashboard />;
     }

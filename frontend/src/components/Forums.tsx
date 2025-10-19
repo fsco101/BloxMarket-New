@@ -395,6 +395,9 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
       } else {
         toast.success('Changed to upvote!');
       }
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to upvote:', error);
       toast.error('Failed to update vote');
@@ -423,6 +426,9 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
       } else {
         toast.success('Changed to downvote!');
       }
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to downvote:', error);
       toast.error('Failed to update vote');
@@ -443,6 +449,9 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
       setComments(prev => [comment, ...prev]);
       setNewComment('');
       toast.success('Comment added!');
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to add comment:', error);
       toast.error('Failed to add comment');

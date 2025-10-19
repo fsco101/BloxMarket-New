@@ -581,7 +581,7 @@ export function MiddlemanDirectory() {
                         
                         <Button variant="outline" size="sm" className="flex-1">
                           <MessageSquare className="w-3 h-3 mr-1" />
-                          Contact
+                          Message
                         </Button>
                       </div>
                     </div>

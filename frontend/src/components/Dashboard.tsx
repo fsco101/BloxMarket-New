@@ -315,9 +315,12 @@ function ReportModal({ post, isOpen, onClose }: { post: DashboardPost | null; is
       setReason('');
       setReportType('Other');
       onClose();
-    } catch (error: any) {
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
+    } catch (error) {
       console.error('Failed to submit report:', error);
-      if (error.message?.includes('already reported')) {
+      if (error instanceof Error && error.message.includes('already reported')) {
         toast.error('You have already reported this post');
       } else {
         toast.error('You cannot report your own post.');
@@ -592,11 +595,14 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
       } else {
         toast.success('Changed to upvote!');
       }
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to upvote:', error);
-      if (error.message.includes('already voted')) {
+      if (error instanceof Error && error.message.includes('already voted')) {
         toast.error('You have already voted on this post');
-      } else if (error.message.includes('404')) {
+      } else if (error instanceof Error && error.message.includes('404')) {
         toast.error('Post not found');
       } else {
         toast.error('You can not vote on your own trade');
@@ -640,11 +646,14 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
       } else {
         toast.success('Changed to downvote!');
       }
+      
+      // Dispatch event to update notifications
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to downvote:', error);
-      if (error.message.includes('already voted')) {
+      if (error instanceof Error && error.message.includes('already voted')) {
         toast.error('You have already voted on this post');
-      } else if (error.message.includes('404')) {
+      } else if (error instanceof Error && error.message.includes('404')) {
         toast.error('Post not found');
       } else {
         toast.error('You can not vote on your own trade');
@@ -685,14 +694,20 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
         setComments(prev => [newComment, ...prev]);
         setComment('');
         toast.success('Comment added!');
+        
+        // Dispatch event to update notifications
+        window.dispatchEvent(new CustomEvent('notification-created'));
       }
     } catch (error) {
       console.error('Failed to add comment:', error);
-      if (error.message.includes('404')) {
+      if (error instanceof Error && error.message.includes('404')) {
         toast.error('Post not found');
       } else {
         toast.error('Failed to add comment');
       }
+      
+      // Dispatch event to update notifications even on error (in case notification was created)
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } finally {
       setSubmittingComment(false);
     }

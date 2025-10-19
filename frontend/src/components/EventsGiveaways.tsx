@@ -190,6 +190,9 @@ function EventDetailsModal({
       } else {
         toast.success('Changed to upvote!');
       }
+      
+      // Dispatch notification event
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to upvote:', error);
       toast.error('Failed to update vote');
@@ -218,6 +221,9 @@ function EventDetailsModal({
       } else {
         toast.success('Changed to downvote!');
       }
+      
+      // Dispatch notification event
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to downvote:', error);
       toast.error('Failed to update vote');
@@ -238,6 +244,9 @@ function EventDetailsModal({
       setComments(prev => [comment, ...prev]);
       setNewComment('');
       toast.success('Comment added!');
+      
+      // Dispatch notification event
+      window.dispatchEvent(new CustomEvent('notification-created'));
     } catch (error) {
       console.error('Failed to add comment:', error);
       toast.error('Failed to add comment');
@@ -2014,14 +2023,6 @@ export function EventsGiveaways() {
                         event.type === 'giveaway' ? 'I\'m Interested' : 
                         event.type === 'competition' ? 'I\'m Interested' : 'I\'m Interested'
                       )}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Heart className="w-3 h-3 mr-1" />
-                      Save
                     </Button>
                     <Button 
                       variant="outline" 

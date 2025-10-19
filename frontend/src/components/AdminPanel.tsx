@@ -389,15 +389,6 @@ export function AdminPanel() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setActiveSection('reports')}
-                  className="flex items-center gap-2"
-                >
-                  <Flag className="w-4 h-4" />
-                  Review Reports
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
                   onClick={() => setActiveSection('middleman')}
                   className="flex items-center gap-2"
                 >

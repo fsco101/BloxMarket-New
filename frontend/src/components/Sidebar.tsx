@@ -32,6 +32,7 @@ import {
   FileText,
   Package
 } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 export function Sidebar() {
   const { currentPage, setCurrentPage } = useApp();
@@ -123,29 +124,32 @@ export function Sidebar() {
 
       {/* User Info */}
       <div className="p-4 border-b border-sidebar-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={(user as any)?.avatar || "https://images.unsplash.com/photo-1740252117027-4275d3f84385?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxyb2Jsb3glMjBhdmF0YXIlMjBjaGFyYWN0ZXJ8ZW58MXx8fHwxNzU4NTYwNDQ4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"} />
-            <AvatarFallback>{user?.username?.[0] || 'U'}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-sidebar-foreground truncate">
-              {user?.username || 'User'}
-            </p>
-            <p className="text-xs text-sidebar-foreground/60 truncate">
-              {(user as any)?.robloxUsername || 'No Roblox linked'}
-            </p>
-            <div className="flex items-center gap-1 mt-1">
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className={`w-2 h-2 ${i < ((user as any)?.rating || 0) ? 'bg-yellow-400' : 'bg-gray-300'}`} />
-                ))}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={(user as any)?.avatar || "https://images.unsplash.com/photo-1740252117027-4275d3f84385?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxyb2Jsb3glMjBhdmF0YXIlMjBjaGFyYWN0ZXJ8ZW58MXx8fHwxNzU4NTYwNDQ4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"} />
+              <AvatarFallback>{user?.username?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm text-sidebar-foreground truncate">
+                {user?.username || 'User'}
+              </p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">
+                {(user as any)?.robloxUsername || 'No Roblox linked'}
+              </p>
+              <div className="flex items-center gap-1 mt-1">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className={`w-2 h-2 ${i < ((user as any)?.rating || 0) ? 'bg-yellow-400' : 'bg-gray-300'}`} />
+                  ))}
+                </div>
+                <span className="text-xs text-sidebar-foreground/60 ml-1">
+                  ({(user as any)?.vouchCount || 0} vouches)
+                </span>
               </div>
-              <span className="text-xs text-sidebar-foreground/60 ml-1">
-                ({(user as any)?.vouchCount || 0} vouches)
-              </span>
             </div>
           </div>
+          <NotificationBell />
         </div>
       </div>
 
