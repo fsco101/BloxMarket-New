@@ -1656,10 +1656,6 @@ export function Wishlist() {
                       <span>{item.max_price}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Heart className="w-4 h-4" />
-                      <span>{item.watchers || 0} watching</span>
-                    </div>
-                    <div className="flex items-center gap-1">
                       <MessageSquare className="w-4 h-4" />
                       <span>{item.comment_count || 0} comments</span>
                     </div>

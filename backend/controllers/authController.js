@@ -236,6 +236,12 @@ export const authController = {
         return res.status(404).json({ error: 'User not found' });
       }
 
+      // Get wishlist count for the user
+      const { Wishlist } = await import('../models/Wishlist.js');
+      const { Vouch } = await import('../models/Vouch.js');
+      const wishlistCount = await Wishlist.countDocuments({ user_id: user._id });
+      const vouchCount = await Vouch.countDocuments({ user_id: user._id });
+
       res.json({
         id: user._id.toString(),
         username: user.username,
@@ -245,8 +251,11 @@ export const authController = {
         avatar_url: user.avatar_url,
         bio: user.bio,
         discord_username: user.discord_username,
+        messenger_link: user.messenger_link,
+        website: user.website,
         credibility_score: user.credibility_score,
-        vouch_count: user.vouch_count,
+        totalVouches: vouchCount,
+        totalWishlistItems: wishlistCount,
         is_verified: user.is_verified,
         is_middleman: user.is_middleman,
         verification_requested: user.verification_requested,

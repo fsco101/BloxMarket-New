@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
@@ -51,7 +51,9 @@ interface Trade {
     username: string;
     roblox_username: string;
     credibility_score: number;
+    avatar_url?: string;
   };
+  avatar_url?: string;
   images?: Array<{ 
     image_url: string; 
     uploaded_at?: string;
@@ -74,6 +76,7 @@ interface ForumPost {
   username: string;
   credibility_score: number;
   user_id: string;
+  avatar_url?: string;
   images?: Array<{ filename: string; originalName: string; path: string; size: number; mimetype: string }>;
   commentCount: number;
 }
@@ -91,6 +94,7 @@ interface Event {
     username: string;
     avatar?: string;
     verified?: boolean;
+    avatar_url?: string;
   };
 }
 
@@ -106,6 +110,7 @@ interface DashboardPost {
     vouchCount: number;
     verified?: boolean;
     moderator?: boolean;
+    avatar_url?: string;
   };
   timestamp: string;
   comments?: number;
@@ -144,6 +149,21 @@ interface ImageViewerProps {
   onPrevious: () => void;
   onSetIndex: (index: number) => void;
 }
+
+// Helper function to get avatar URL
+const getAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+    return `http://localhost:5000${avatarUrl}`;
+  }
+
+  return `http://localhost:5000/uploads/avatars/${avatarUrl}`;
+};
 
 // ImageViewer Component
 function ImageViewer({ images, currentIndex, onNext, onPrevious, onSetIndex }: ImageViewerProps) {
@@ -1093,7 +1113,8 @@ export function Dashboard() {
               _id: '',
               username: trade.username || '',
               roblox_username: trade.roblox_username || '',
-              credibility_score: trade.credibility_score || 0
+              credibility_score: trade.credibility_score || 0,
+              avatar_url: trade.avatar_url
             };
             
             // Fix image processing
@@ -1137,7 +1158,8 @@ export function Dashboard() {
                 rating: Math.min(5, Math.max(1, Math.floor((userData.credibility_score || trade.credibility_score || 0) / 20))),
                 vouchCount: Math.floor((userData.credibility_score || trade.credibility_score || 0) / 2),
                 verified: false, // Default to false since the trade data doesn't include verification status
-                moderator: false // Default to false since the trade data doesn't include moderator status
+                moderator: false, // Default to false since the trade data doesn't include moderator status
+                avatar_url: userData.avatar_url || trade.avatar_url
               },
               timestamp,
               items: [trade.item_offered],
@@ -1188,7 +1210,8 @@ export function Dashboard() {
                 rating: Math.min(5, Math.max(1, Math.floor((post.credibility_score || 0) / 20))),
                 vouchCount: Math.floor((post.credibility_score || 0) / 2),
                 verified: false, // Default to false since the forum post data doesn't include verification status
-                moderator: false // Default to false since the forum post data doesn't include moderator status
+                moderator: false, // Default to false since the forum post data doesn't include moderator status
+                avatar_url: post.avatar_url
               },
               timestamp,
               comments: post.commentCount || 0,
@@ -1223,6 +1246,7 @@ export function Dashboard() {
               username: string;
               avatar?: string;
               verified?: boolean;
+              avatar_url?: string;
             };
             images?: Array<{ filename: string; path: string }>;
           }
@@ -1270,7 +1294,8 @@ export function Dashboard() {
                 rating: 5,
                 vouchCount: 999,
                 verified: event.creator?.verified || true,
-                moderator: true
+                moderator: true,
+                avatar_url: event.creator?.avatar_url || event.creator?.avatar
               },
               timestamp,
               comments: 0, // Will be loaded lazily
@@ -1455,6 +1480,14 @@ export function Dashboard() {
               <UniversalCardHeader
                 avatar={
                   <Avatar className="w-10 h-10">
+                    <AvatarImage
+                      src={getAvatarUrl(post.user.avatar_url)}
+                      className="object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '';
+                      }}
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                       {post.user.username[0]?.toUpperCase()}
                     </AvatarFallback>

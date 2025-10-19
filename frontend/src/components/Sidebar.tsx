@@ -92,6 +92,20 @@ export function Sidebar() {
   // Check if current page is a profile-related page
   const isProfilePage = profileMenuItems.some(item => item.id === currentPage);
 
+  const getAvatarUrl = (avatarUrl?: string) => {
+    if (!avatarUrl) return '';
+
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      return avatarUrl;
+    }
+
+    if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+      return `http://localhost:5000${avatarUrl}`;
+    }
+
+    return `http://localhost:5000/uploads/avatars/${avatarUrl}`;
+  };
+
   // Debug logging to help identify issues
   useEffect(() => {
     console.log('Sidebar Debug:', {
@@ -127,7 +141,7 @@ export function Sidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={(user as any)?.avatar || "https://images.unsplash.com/photo-1740252117027-4275d3f84385?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxyb2Jsb3glMjBhdmF0YXIlMjBjaGFyYWN0ZXJ8ZW58MXx8fHwxNzU4NTYwNDQ4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"} />
+              <AvatarImage src={getAvatarUrl(user?.avatar_url as string)} />
               <AvatarFallback>{user?.username?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -135,7 +149,7 @@ export function Sidebar() {
                 {user?.username || 'User'}
               </p>
               <p className="text-xs text-sidebar-foreground/60 truncate">
-                {(user as any)?.robloxUsername || 'No Roblox linked'}
+                {(user as any)?.roblox_username || 'No Roblox linked'}
               </p>
               <div className="flex items-center gap-1 mt-1">
                 <div className="flex">
@@ -144,7 +158,7 @@ export function Sidebar() {
                   ))}
                 </div>
                 <span className="text-xs text-sidebar-foreground/60 ml-1">
-                  ({(user as any)?.vouchCount || 0} vouches)
+                  ({(user as any)?.totalVouches || 0} vouches)
                 </span>
               </div>
             </div>
@@ -236,14 +250,6 @@ export function Sidebar() {
             </DropdownMenu>
           )}
 
-          {/* Debug Info - Remove this after fixing */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="p-2 text-xs text-muted-foreground border rounded">
-              Role: {user?.role || 'none'}<br/>
-              Admin: {isAdminOrModerator ? 'yes' : 'no'}<br/>
-              Loading: {isLoading ? 'yes' : 'no'}
-            </div>
-          )}
         </div>
       </nav>
 
