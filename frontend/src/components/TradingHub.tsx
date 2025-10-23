@@ -182,7 +182,6 @@ interface ImageDisplayProps {
 function ImageDisplay({ src, alt, className, fallback }: ImageDisplayProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
 
   const handleImageLoad = () => {
     setImageLoading(false);
@@ -191,46 +190,16 @@ function ImageDisplay({ src, alt, className, fallback }: ImageDisplayProps) {
 
   const handleImageError = () => {
     console.error('Image failed to load:', src);
-    
-    // First attempt: try the original URL
-    if (retryCount === 0) {
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-        setImageError(false);
-        setImageLoading(true);
-      }, 1000);
-    } 
-    // Second attempt: try to fix URL format if needed
-    else if (retryCount === 1) {
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-        setImageError(false);
-        setImageLoading(true);
-      }, 1000);
-    } else {
-      setImageLoading(false);
-      setImageError(true);
-    }
-  };
-
-  const handleRetry = () => {
-    setRetryCount(0);
-    setImageError(false);
-    setImageLoading(true);
+    setImageLoading(false);
+    setImageError(true);
   };
 
   if (imageError) {
     return fallback || (
       <div className={`bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${className}`}>
         <div className="text-center text-gray-400">
-          <Upload className="w-8 h-8 mx-auto mb-1" />
-          <span className="text-xs block mb-1">Image unavailable</span>
-          <button
-            onClick={handleRetry}
-            className="text-xs text-blue-500 hover:text-blue-600 underline focus:outline-none"
-          >
-            Retry
-          </button>
+          <ImageIcon className="w-8 h-8 mx-auto mb-1" />
+          <span className="text-xs">Image unavailable</span>
         </div>
       </div>
     );
@@ -244,7 +213,7 @@ function ImageDisplay({ src, alt, className, fallback }: ImageDisplayProps) {
         </div>
       )}
       <img
-        src={retryCount === 2 ? src.replace(/^(https?:\/\/[^/]+)?(\/uploads\/trades\/)?(.+)$/, `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/trades/$3`) : `${src}${retryCount === 1 ? `?v=${retryCount}` : ''}`}
+        src={src}
         alt={alt}
         className={`w-full h-full object-cover rounded ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
         onLoad={handleImageLoad}

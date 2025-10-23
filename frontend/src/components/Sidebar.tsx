@@ -122,7 +122,7 @@ export function Sidebar() {
   }, [user, isAdminOrModerator, isLoading]);
 
   return (
-    <div className="w-64 sm:w-72 lg:w-80 h-screen bg-gradient-to-b from-sidebar via-sidebar to-sidebar/95 border-r border-sidebar-border/60 flex flex-col sticky top-0 flex-shrink-0 shadow-2xl backdrop-blur-sm animate-fadeInUp transition-all duration-300 ease-in-out">
+    <div className="w-64 sm:w-72 lg:w-80 h-screen bg-gradient-to-b from-sidebar via-sidebar to-sidebar/95 border-r border-sidebar-border/60 flex flex-col flex-shrink-0 shadow-2xl backdrop-blur-sm animate-fadeInUp transition-all duration-300 ease-in-out">
       {/* Subtle background pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.05),transparent_50%)] pointer-events-none animate-pulse-glow"></div>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.03),transparent_50%)] pointer-events-none"></div>

@@ -357,7 +357,7 @@ export default function App() {
         <AppContext.Provider value={{ currentPage, setCurrentPage }}>
           <div className="min-h-screen bg-background text-foreground flex">
             <Sidebar />
-            <main className="flex-1 overflow-hidden">
+            <main className="flex-1 overflow-hidden min-h-screen">
               <ErrorBoundary>
                 {renderCurrentPage()}
               </ErrorBoundary>
