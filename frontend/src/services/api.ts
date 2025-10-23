@@ -1693,7 +1693,7 @@ class ApiService {
   // Report methods
   async createReport(reportData: {
     post_id: string;
-    post_type: 'trade' | 'forum' | 'event' | 'wishlist';
+    post_type: 'trade' | 'forum' | 'event' | 'wishlist' | 'user';
     reason: string;
     type?: 'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other';
   }) {

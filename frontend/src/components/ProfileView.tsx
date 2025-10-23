@@ -15,8 +15,20 @@ import {
   CheckCircle,
   Shield,
   Award,
-  Users
+  Users,
+  Flag
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { Textarea } from './ui/textarea';
+import { toast } from 'sonner';
 
 interface ProfileData {
   user: {
@@ -51,6 +63,10 @@ export function ProfileView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportType, setReportType] = useState<'Scamming' | 'Harassment' | 'Inappropriate Content' | 'Spam' | 'Impersonation' | 'Other'>('Other');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   // Extract user ID from currentPage (format: 'profile-{userId}')
   const userId = currentPage.startsWith('profile-') ? currentPage.replace('profile-', '') : null;
@@ -137,6 +153,35 @@ export function ProfileView() {
     if (diffInDays < 30) return `Active ${Math.floor(diffInDays / 7)}w ago`;
 
     return `Active ${Math.floor(diffInDays / 30)}mo ago`;
+  };
+
+  const handleReportUser = async () => {
+    if (!profileData || !reportReason.trim()) {
+      toast.error('Please provide a reason for the report');
+      return;
+    }
+
+    try {
+      setSubmittingReport(true);
+
+      await apiService.createReport({
+        post_id: profileData.user._id,
+        post_type: 'user',
+        reason: reportReason.trim(),
+        type: reportType
+      });
+
+      toast.success('Report submitted successfully');
+      setReportModalOpen(false);
+      setReportReason('');
+      setReportType('Other');
+    } catch (error: unknown) {
+      console.error('Error submitting report:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit report';
+      toast.error(errorMessage);
+    } finally {
+      setSubmittingReport(false);
+    }
   };
 
   if (loading) {
@@ -229,6 +274,82 @@ export function ProfileView() {
                       <p className="text-sm text-muted-foreground">
                         {formatLastActive(user.last_active)}
                       </p>
+                    </div>
+
+                    {/* Report Button */}
+                    <div className="flex justify-center lg:justify-end">
+                      <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="flex items-center gap-2">
+                            <Flag className="w-4 h-4" />
+                            Report User
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>Report User</DialogTitle>
+                            <DialogDescription>
+                              Report {user.username} for violating community guidelines. All reports are reviewed by moderators.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                              <label htmlFor="report-type" className="text-sm font-medium">
+                                Report Type
+                              </label>
+                              <select
+                                id="report-type"
+                                value={reportType}
+                                onChange={(e) => setReportType(e.target.value as typeof reportType)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <option value="Scamming">Scamming</option>
+                                <option value="Harassment">Harassment</option>
+                                <option value="Inappropriate Content">Inappropriate Content</option>
+                                <option value="Spam">Spam</option>
+                                <option value="Impersonation">Impersonation</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                            <div className="grid gap-2">
+                              <label htmlFor="report-reason" className="text-sm font-medium">
+                                Reason
+                              </label>
+                              <Textarea
+                                id="report-reason"
+                                placeholder="Please provide details about why you're reporting this user..."
+                                value={reportReason}
+                                onChange={(e) => setReportReason(e.target.value)}
+                                className="min-h-[100px]"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setReportModalOpen(false)}
+                              disabled={submittingReport}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={handleReportUser}
+                              disabled={submittingReport || !reportReason.trim()}
+                            >
+                              {submittingReport ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Submitting...
+                                </>
+                              ) : (
+                                'Submit Report'
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
 

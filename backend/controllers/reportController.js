@@ -21,10 +21,10 @@ export const reportController = {
       }
 
       // Validate post_type
-      const validPostTypes = ['trade', 'forum', 'event', 'wishlist'];
+      const validPostTypes = ['trade', 'forum', 'event', 'wishlist', 'user'];
       if (!validPostTypes.includes(post_type)) {
         return res.status(400).json({
-          error: 'Invalid post_type. Must be one of: trade, forum, event, wishlist'
+          error: 'Invalid post_type. Must be one of: trade, forum, event, wishlist, user'
         });
       }
 
@@ -58,6 +58,13 @@ export const reportController = {
           const wishlist = await Wishlist.findById(post_id);
           if (wishlist) {
             reportedUserId = wishlist.user_id;
+            postExists = true;
+          }
+          break;
+        case 'user':
+          const user = await User.findById(post_id);
+          if (user) {
+            reportedUserId = user._id;
             postExists = true;
           }
           break;
@@ -176,6 +183,15 @@ export const reportController = {
                   postDetails = {
                     title: wishlist.item_name,
                     description: wishlist.description
+                  };
+                }
+                break;
+              case 'user':
+                const user = await User.findById(report.post_id).select('username roblox_username');
+                if (user) {
+                  postDetails = {
+                    title: `User: ${user.username}`,
+                    description: user.roblox_username ? `@${user.roblox_username}` : 'No Roblox username'
                   };
                 }
                 break;

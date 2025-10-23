@@ -17,7 +17,7 @@ const reportSchema = new mongoose.Schema({
   },
   post_type: {
     type: String,
-    enum: ['trade', 'forum', 'event', 'wishlist'],
+    enum: ['trade', 'forum', 'event', 'wishlist', 'user'],
     required: true
   },
   reason: {
