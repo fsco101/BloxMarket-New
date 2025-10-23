@@ -21,6 +21,24 @@ import { toast } from 'sonner';
 import { MiddlemanApplicationForm } from './user/MiddlemanApplicationForm';
 import { useAuth, useApp } from '../App';
 
+// Helper function to get avatar URL
+const getAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+    return `http://localhost:5000${avatarUrl}`;
+  }
+
+  console.log('getAvatarUrl: Processing filename:', avatarUrl);
+  const fullUrl = `http://localhost:5000/api/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Generated URL:', fullUrl);
+  return fullUrl;
+};
+
 // Define the Middleman interface
 interface Middleman {
   id: string | number;
@@ -444,14 +462,28 @@ export function MiddlemanDirectory() {
                   
                   <CardHeader className="pb-4">
                     <div className="flex items-start gap-4">
-                      <Avatar className="w-16 h-16">
-                        <AvatarImage src={mm.avatar} />
+                      <Avatar 
+                        className="w-16 h-16 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMiddlemanClick(mm.id.toString());
+                        }}
+                      >
+                        <AvatarImage src={getAvatarUrl(mm.avatar)} />
                         <AvatarFallback>{mm.username[0]}</AvatarFallback>
                       </Avatar>
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-lg">{mm.username}</h3>
+                          <h3 
+                            className="font-semibold text-lg cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMiddlemanClick(mm.id.toString());
+                            }}
+                          >
+                            {mm.username}
+                          </h3>
                           {mm.verified && (
                             <CheckCircle className="w-5 h-5 text-blue-500" />
                           )}
