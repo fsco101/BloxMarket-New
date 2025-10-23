@@ -342,9 +342,9 @@ export function NewUserProfile() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">Loading profile...</p>
         </div>
       </div>
@@ -353,7 +353,7 @@ export function NewUserProfile() {
 
   if (error && !profileData) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
           <p className="text-red-500 mb-4">{error}</p>
@@ -366,21 +366,21 @@ export function NewUserProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto p-6">
         {/* Profile Header - Hero Section */}
-        <Card className="mb-8 overflow-hidden shadow-2xl border-0 bg-white dark:bg-gray-800">
+        <Card className="mb-8 overflow-hidden shadow-2xl border-0 bg-card">
           <div className="relative">
             {/* Background Pattern */}
-            <div className="absolute inset-0 bg-gray-100 dark:bg-gray-700"></div>
+            <div className="absolute inset-0 bg-muted/30"></div>
 
             <CardContent className="relative p-8">
               <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
                 {/* Avatar Section - Larger */}
                 <div className="relative group">
-                  <div className="absolute -inset-1 bg-gray-300 dark:bg-gray-600 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                  <div className="absolute -inset-1 bg-primary/20 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
                   <div className="relative">
-                    <Avatar className="w-32 h-32 border-4 border-white shadow-2xl">
+                    <Avatar className="w-32 h-32 border-4 border-background shadow-2xl">
                       <AvatarImage
                         src={avatarPreview || getAvatarUrl(profileData?.user?.avatar_url)}
                         className="object-cover"
@@ -389,11 +389,11 @@ export function NewUserProfile() {
                           target.src = '';
                         }}
                       />
-                      <AvatarFallback className="text-3xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
                         {profileData?.user?.username?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <label className="absolute bottom-1 right-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1.5 cursor-pointer transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border-2 border-white z-10">
+                    <label className="absolute bottom-1 right-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1.5 cursor-pointer transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border-2 border-background z-10">
                       <Camera className="w-3 h-3" />
                       <input
                         type="file"
@@ -433,18 +433,18 @@ export function NewUserProfile() {
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6">
                     <div className="mb-4 lg:mb-0">
                       <div className="flex items-center gap-4 mb-3 justify-center lg:justify-start">
-                        <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="text-4xl lg:text-5xl font-bold text-card-foreground">
                           {profileData?.user?.username || 'Loading...'}
                         </h1>
                         {profileData?.user && getRoleBadge(profileData.user.role || 'user')}
                       </div>
-                      <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">
+                      <p className="text-xl text-muted-foreground mb-2">
                         @{profileData?.user?.roblox_username || 'Not set'}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-500 mb-2">
+                      <p className="text-sm text-muted-foreground mb-2">
                         Member since {profileData?.user?.createdAt ? formatDate(profileData.user.createdAt) : 'Unknown'}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         {profileData?.user?.last_active ? formatLastActive(profileData.user.last_active) : 'Unknown'}
                       </p>
                     </div>
@@ -457,15 +457,15 @@ export function NewUserProfile() {
                           Edit Profile
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
                         <DialogHeader>
-                          <DialogTitle>Edit Profile</DialogTitle>
+                          <DialogTitle className="text-card-foreground">Edit Profile</DialogTitle>
                         </DialogHeader>
 
                         <form onSubmit={handleEditProfile} className="space-y-6 py-4">
                           {/* Profile Information */}
                           <div className="space-y-4">
-                            <h3 className="text-lg font-semibold border-b pb-2">Profile Information</h3>
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 text-card-foreground">Profile Information</h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -552,8 +552,8 @@ export function NewUserProfile() {
                           </div>
 
                           {/* Password Change */}
-                          <div className="space-y-4 border-t pt-6">
-                            <h3 className="text-lg font-semibold border-b pb-2">Change Password</h3>
+                          <div className="space-y-4 border-t border-border pt-6">
+                            <h3 className="text-lg font-semibold border-b border-border pb-2 text-card-foreground">Change Password</h3>
 
                             <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                               <div className="space-y-3">
@@ -594,12 +594,12 @@ export function NewUserProfile() {
                           </div>
 
                           {error && (
-                            <div className="text-red-500 text-sm p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+                            <div className="text-red-500 text-sm p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
                               {error}
                             </div>
                           )}
 
-                          <div className="flex justify-end gap-3 pt-4 border-t">
+                          <div className="flex justify-end gap-3 pt-4 border-t border-border">
                             <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={saving}>
                               Cancel
                             </Button>
@@ -624,32 +624,32 @@ export function NewUserProfile() {
 
                   {/* Stats */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    <div className="text-center p-4 bg-card rounded-xl border border-border">
+                      <div className="text-2xl font-bold text-card-foreground mb-1">
                         {profileData?.stats?.totalTrades || 0}
                       </div>
-                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Trades</div>
+                      <div className="text-sm font-medium text-muted-foreground">Total Trades</div>
                     </div>
-                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="text-center p-4 bg-card rounded-xl border border-border">
                       <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
                         {profileData?.stats?.successRate || 0}%
                       </div>
-                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Success Rate</div>
+                      <div className="text-sm font-medium text-muted-foreground">Success Rate</div>
                     </div>
-                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="text-center p-4 bg-card rounded-xl border border-border">
                       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                         {profileData?.user?.vouch_count || 0}
                       </div>
-                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Vouches</div>
+                      <div className="text-sm font-medium text-muted-foreground">Vouches</div>
                     </div>
-                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="text-center p-4 bg-card rounded-xl border border-border">
                       <div className="flex items-center justify-center mb-1">
                         <Award className="w-6 h-6 text-yellow-500 mr-1" />
                         <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                           {profileData?.user?.credibility_score || 0}
                         </span>
                       </div>
-                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Credibility</div>
+                      <div className="text-sm font-medium text-muted-foreground">Credibility</div>
                     </div>
                   </div>
                 </div>
@@ -664,14 +664,14 @@ export function NewUserProfile() {
           <div className="lg:col-span-2 space-y-8">
             {/* Bio Section */}
             {profileData?.user?.bio && (
-              <Card className="shadow-xl border-0 bg-white dark:bg-gray-800">
+              <Card className="shadow-xl border-0 bg-card">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-2xl text-gray-900 dark:text-white">
+                  <CardTitle className="text-2xl text-card-foreground">
                     About
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
+                  <p className="text-card-foreground leading-relaxed text-lg">
                     {profileData.user.bio}
                   </p>
                 </CardContent>
@@ -679,33 +679,33 @@ export function NewUserProfile() {
             )}
 
             {/* Contact Information - Enhanced */}
-            <Card className="shadow-xl border-0 bg-white dark:bg-gray-800">
+            <Card className="shadow-xl border-0 bg-card">
               <CardHeader className="pb-4">
-                <CardTitle className="text-2xl text-gray-900 dark:text-white">
+                <CardTitle className="text-2xl text-card-foreground">
                   Contact Information
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {profileData?.user?.discord_username && (
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-4 p-4 bg-muted rounded-xl border border-border">
                       <div className="p-3 bg-blue-500 rounded-full">
                         <MessageSquare className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Discord</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{profileData.user.discord_username}</p>
+                        <p className="text-sm font-semibold text-card-foreground">Discord</p>
+                        <p className="text-sm text-muted-foreground">{profileData.user.discord_username}</p>
                       </div>
                     </div>
                   )}
 
                   {profileData?.user?.messenger_link && (
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-4 p-4 bg-muted rounded-xl border border-border">
                       <div className="p-3 bg-green-500 rounded-full">
                         <MessageCircle className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Messenger</p>
+                        <p className="text-sm font-semibold text-card-foreground">Messenger</p>
                         <a
                           href={profileData.user.messenger_link}
                           target="_blank"
@@ -719,12 +719,12 @@ export function NewUserProfile() {
                   )}
 
                   {profileData?.user?.website && (
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-4 p-4 bg-muted rounded-xl border border-border">
                       <div className="p-3 bg-purple-500 rounded-full">
                         <Globe className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Website</p>
+                        <p className="text-sm font-semibold text-card-foreground">Website</p>
                         <a
                           href={profileData.user.website}
                           target="_blank"
@@ -738,24 +738,24 @@ export function NewUserProfile() {
                   )}
 
                   {profileData?.user?.location && (
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-4 p-4 bg-muted rounded-xl border border-border">
                       <div className="p-3 bg-red-500 rounded-full">
                         <Globe className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Location</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{profileData.user.location}</p>
+                        <p className="text-sm font-semibold text-card-foreground">Location</p>
+                        <p className="text-sm text-muted-foreground">{profileData.user.location}</p>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center gap-4 p-4 bg-muted rounded-xl border border-border">
                     <div className="p-3 bg-indigo-500 rounded-full">
                       <Calendar className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Member Since</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm font-semibold text-card-foreground">Member Since</p>
+                      <p className="text-sm text-muted-foreground">
                         {profileData?.user?.createdAt ? new Date(profileData.user.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
@@ -772,28 +772,28 @@ export function NewUserProfile() {
           {/* Sidebar - Additional Info */}
           <div className="space-y-8">
             {/* Account Details */}
-            <Card className="shadow-xl border-0 bg-white dark:bg-gray-800">
+            <Card className="shadow-xl border-0 bg-card">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl text-gray-900 dark:text-white">
+                <CardTitle className="text-xl text-card-foreground">
                   Account Details
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Username</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{profileData?.user?.username || 'Loading...'}</span>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-sm font-medium text-muted-foreground">Username</span>
+                  <span className="text-sm font-semibold text-card-foreground">{profileData?.user?.username || 'Loading...'}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Roblox</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">@{profileData?.user?.roblox_username || 'Not set'}</span>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-sm font-medium text-muted-foreground">Roblox</span>
+                  <span className="text-sm font-semibold text-card-foreground">@{profileData?.user?.roblox_username || 'Not set'}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Role</span>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-sm font-medium text-muted-foreground">Role</span>
                   {profileData?.user ? getRoleBadge(profileData.user.role || 'user') : <span className="text-sm">Loading...</span>}
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Member Since</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-muted-foreground">Member Since</span>
+                  <span className="text-sm font-semibold text-card-foreground">
                     {profileData?.user?.createdAt ? formatDate(profileData.user.createdAt) : 'Unknown'}
                   </span>
                 </div>
@@ -801,24 +801,24 @@ export function NewUserProfile() {
             </Card>
 
             {/* Trading Stats */}
-            <Card className="shadow-xl border-0 bg-white dark:bg-gray-800">
+            <Card className="shadow-xl border-0 bg-card">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl text-gray-900 dark:text-white">
+                <CardTitle className="text-xl text-card-foreground">
                   Trading Statistics
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{profileData?.stats?.totalTrades || 0}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Total Trades</div>
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <div className="text-2xl font-bold text-card-foreground">{profileData?.stats?.totalTrades || 0}</div>
+                  <div className="text-sm text-muted-foreground">Total Trades</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">{profileData?.stats?.completedTrades || 0}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Completed</div>
+                  <div className="text-sm text-muted-foreground">Completed</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{profileData?.stats?.totalVouches || 0}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Vouches Received</div>
+                  <div className="text-sm text-muted-foreground">Vouches Received</div>
                 </div>
               </CardContent>
             </Card>
