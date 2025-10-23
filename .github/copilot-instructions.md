@@ -55,6 +55,9 @@ PORT=5000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 
+# Start MongoDB service (Windows)
+net start MongoDB
+
 # Start application
 # Terminal 1 (backend):
 cd backend && npm run dev
@@ -107,6 +110,10 @@ const [error, setError] = useState('');
 export const authController = {
   register: async (req, res) => { /* ... */ },
   login: async (req, res) => { /* ... */ }
+
+export const tradeController = {
+  getAllTrades: async (req, res) => { /* ... */ },
+  createTrade: async (req, res) => { /* ... */ }
 };
 ```
 
@@ -141,6 +148,19 @@ if (!req.body.requiredField) {
 - FormData used for multipart/form-data uploads
 - Image processing with Sharp/Jimp for resizing and optimization
 
+### Rate Limiting
+- **Standard API**: 1000 requests per 15 minutes
+- **Authentication**: 100 requests per 15 minutes
+- **Admin/Sensitive**: 50 requests per hour
+- **DataTables**: 200 requests per 5 minutes
+- Client-side throttling prevents hitting limits
+
+### DataTables Integration
+- Admin panels use server-side pagination, sorting, filtering
+- Endpoints: `/api/admin/datatables/{resource}`
+- Support for CSV export and bulk operations
+- Controllers in `/backend/controllers/datatables/`
+
 ## Common Workflows
 
 ### Adding a New Feature
@@ -167,6 +187,18 @@ const canEditItem = (item) => {
   return isOwner || isAdmin;
 };
 ```
+
+### CRUD Operations
+All features follow consistent CRUD patterns:
+- **Create**: Form validation, image upload handling
+- **Read**: Pagination, filtering, population of related data
+- **Update**: Ownership/permission checks, partial updates
+- **Delete**: Cascade deletion, file cleanup
+
+### Notification System
+- Automatic notifications for user interactions
+- Types: trade_comment, trade_upvote, forum_reply, etc.
+- Real-time updates via polling
 
 ## Troubleshooting
 
@@ -212,6 +244,23 @@ All major features (Trading, Forums, Events, Wishlists) follow consistent CRUD p
 - Read operations with filtering, searching and pagination
 - Update operations with permission checking
 - Delete operations with confirmation
+
+### Image Upload Pattern
+```typescript
+// Frontend: FormData for image uploads
+const formData = new FormData();
+formData.append('title', postData.title);
+images.forEach(image => formData.append('images', image));
+
+// Backend: Multer middleware handles uploads
+const upload = multer({ dest: 'uploads/forum/' });
+router.post('/', auth, upload.array('images'), controller.create);
+```
+
+### Vouching System
+- Trade vouches: Users can vouch for successful trades
+- Middleman vouches: Rating system for verified middlemen
+- Credibility scores calculated from vouch history
 
 ---
 

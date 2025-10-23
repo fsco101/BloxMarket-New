@@ -353,7 +353,7 @@ export function MiddlemanApplicationForm({ isOpen, onClose }: MiddlemanApplicati
                       {documents.map((file, index) => (
                         <div 
                           key={index} 
-                          className="flex items-center gap-1 bg-gray-100 rounded-md px-2 py-1"
+                          className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-md px-2 py-1"
                         >
                           <FileText className="w-4 h-4 text-blue-500" />
                           <span className="text-sm truncate max-w-[200px]">{file.name}</span>

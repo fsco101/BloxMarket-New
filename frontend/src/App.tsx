@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, Component } from
 import type { ErrorInfo, ReactNode } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { AuthPage } from './components/AuthPage';
+import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { TradingHub } from './components/TradingHub';
 import { Wishlist } from './components/Wishlist';
@@ -121,8 +122,12 @@ const AppContext = createContext<{
 export const useApp = () => useContext(AppContext);
 
 export default function App() {
-  const [isDark, setIsDark] = useState(false);
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  // Load theme preference from localStorage, default to false (light mode)
+  const [isDark, setIsDark] = useState(() => {
+    const savedTheme = localStorage.getItem('bloxmarket-theme');
+    return savedTheme === 'dark';
+  });
+  const [currentPage, setCurrentPage] = useState('landing');
   const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,6 +181,7 @@ export default function App() {
           const me = await apiService.getCurrentUser();
           setUser(me);
           setIsLoggedIn(true);
+          setCurrentPage('landing');
           
           // Save to the appropriate storage
           const storage = isPersistentLogin ? localStorage : sessionStorage;
@@ -185,7 +191,7 @@ export default function App() {
           console.warn('Token verify failed:', err);
         }
       } else {
-        setCurrentPage('auth');
+        setCurrentPage('landing');
       }
 
       setIsLoading(false);
@@ -222,11 +228,20 @@ export default function App() {
     };
   }, []);
 
+  // Apply theme class to document element when theme changes
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
   const handleLogout = () => {
     console.log('Logging out user');
     setUser(null);
     setIsLoggedIn(false);
-    setCurrentPage('auth');
+    setCurrentPage('landing');
     
     // Clear all tokens and user data from both storage types
     localStorage.removeItem('bloxmarket-token');
@@ -242,21 +257,16 @@ export default function App() {
   };
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (!isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('bloxmarket-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('bloxmarket-theme', 'light');
-    }
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    localStorage.setItem('bloxmarket-theme', newIsDark ? 'dark' : 'light');
   };
 
   const login = (userData: User, rememberMe: boolean = true) => {
     console.log('User logged in:', userData.username);
     setUser(userData);
     setIsLoggedIn(true);
-    setCurrentPage('dashboard');
+    setCurrentPage('landing');
     
     // Store user data in the appropriate storage based on remember me preference
     const storage = rememberMe ? localStorage : sessionStorage;
@@ -331,9 +341,11 @@ export default function App() {
     return (
       <ThemeContext.Provider value={{ isDark, toggleTheme }}>
         <AuthContext.Provider value={{ user, login, logout, isLoggedIn, isLoading }}>
-          <div className="min-h-screen bg-background text-foreground">
-            <AuthPage />
-          </div>
+          <AppContext.Provider value={{ currentPage, setCurrentPage }}>
+            <div className="min-h-screen bg-background text-foreground">
+              {currentPage === 'auth' ? <AuthPage /> : <LandingPage />}
+            </div>
+          </AppContext.Provider>
         </AuthContext.Provider>
       </ThemeContext.Provider>
     );

@@ -86,7 +86,7 @@ export function MyTradePosts() {
   ];
 
   const statuses = [
-    { value: 'expired', label: 'Expired', color: 'bg-gray-100 text-gray-800' }
+    { value: 'expired', label: 'Expired', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300' }
   ];
 
   const loadMyTrades = useCallback(async () => {
@@ -662,7 +662,7 @@ export function MyTradePosts() {
                           {post.item_requested && ` for ${post.item_requested}`}
                         </h3>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <Badge className={`text-xs ${statuses.find(s => s.value === post.status)?.color || 'bg-gray-100 text-gray-800'}`}>
+                          <Badge className={`text-xs ${statuses.find(s => s.value === post.status)?.color || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'}`}>
                             {getStatusIcon()}
                             <span className="ml-1">{statuses.find(s => s.value === post.status)?.label || post.status}</span>
                           </Badge>
