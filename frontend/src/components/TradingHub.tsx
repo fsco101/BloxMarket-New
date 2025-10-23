@@ -141,6 +141,7 @@ interface Trade {
   roblox_username: string;
   credibility_score: number;
   user_vouch_count?: number;
+  avatar_url?: string;
   images?: { image_url: string; uploaded_at: string }[];
   user_id?: string;
   upvotes?: number;
@@ -157,6 +158,7 @@ interface User {
   robloxUsername?: string;
   role?: string;
   vouch_count?: number;
+  avatar_url?: string;
 }
 
 interface TradeComment {
@@ -167,6 +169,7 @@ interface TradeComment {
   created_at: string;
   username: string;
   credibility_score?: number;
+  avatar_url?: string;
 }
 
 interface ImageDisplayProps {
@@ -533,7 +536,8 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
             content: comment.content as string,
             created_at: createdAt as string,
             username: (comment.user as Record<string, string>).username,
-            credibility_score: (comment.user as Record<string, number>).credibility_score
+            credibility_score: (comment.user as Record<string, number>).credibility_score,
+            avatar_url: (comment.user as Record<string, string>).avatar_url || ''
           };
         });
         setComments(mappedComments);
@@ -710,7 +714,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
           <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
             <Avatar className="w-12 h-12">
               <AvatarImage
-                src={getAvatarUrl('')}
+                src={getAvatarUrl(trade.avatar_url)}
                 className="object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -865,7 +869,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
             <div className="flex gap-3 p-4 border rounded-lg bg-muted/20">
               <Avatar className="w-8 h-8">
                 <AvatarImage
-                  src={getAvatarUrl('')}
+                  src={getAvatarUrl(currentUser?.avatar_url)}
                   className="object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -873,7 +877,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
                   }}
                 />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                  Y
+                  {currentUser?.username?.[0]?.toUpperCase() || 'Y'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 flex gap-2">
@@ -910,7 +914,7 @@ function TradeDetailsModal({ trade, isOpen, onClose, onEdit, onDelete, canEdit, 
                   <div key={comment.comment_id} className="flex gap-3 p-3 border rounded-lg">
                     <Avatar className="w-8 h-8">
                       <AvatarImage
-                        src={getAvatarUrl('')}
+                        src={getAvatarUrl(comment.avatar_url)}
                         className="object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
@@ -1122,6 +1126,7 @@ export function TradingHub() {
           _id?: string;
           vouch_count?: number;
           credibility_score?: number;
+          avatar_url?: string;
         };
         username?: string;
         roblox_username?: string;
@@ -1207,6 +1212,7 @@ export function TradingHub() {
             roblox_username: (trade.user?.roblox_username as string) || (trade.roblox_username as string) || '',
             credibility_score: (trade.user?.credibility_score as number) ?? (trade.credibility_score as number) ?? 0,
             user_vouch_count: (trade.user?.vouch_count as number) ?? 0,
+            avatar_url: (trade.user?.avatar_url as string) || '',
             user_id: (trade.user?._id as string) || (trade.user_id as string) || '',
             images: processedImages,
             upvotes: Array.isArray(trade.upvotes) ? trade.upvotes.length : (trade.upvotes as number) || 0,
@@ -1264,7 +1270,8 @@ export function TradingHub() {
           email: me.email,
           robloxUsername: me.roblox_username,
           role: me.role,
-          vouch_count: me.vouch_count
+          vouch_count: me.vouch_count,
+          avatar_url: me.avatar_url
         });
       } catch (err) {
         console.error('Failed to refresh current user:', err);
@@ -2180,7 +2187,7 @@ export function TradingHub() {
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
                           <AvatarImage
-                            src={getAvatarUrl('')}
+                            src={getAvatarUrl(trade.avatar_url)}
                             className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;

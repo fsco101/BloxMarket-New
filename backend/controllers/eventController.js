@@ -712,7 +712,8 @@ export const eventController = {
         content: comment.content,
         created_at: comment.created_at,
         username: comment.user_id.username,
-        credibility_score: comment.user_id.credibility_score
+        credibility_score: comment.user_id.credibility_score,
+        avatar_url: comment.user_id.avatar_url
       }));
 
       res.json({
@@ -786,7 +787,8 @@ export const eventController = {
         content: comment.content,
         created_at: comment.created_at,
         username: comment.user_id.username,
-        credibility_score: comment.user_id.credibility_score
+        credibility_score: comment.user_id.credibility_score,
+        avatar_url: comment.user_id.avatar_url
       };
 
       console.log('Comment response:', responseData);

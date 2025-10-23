@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardFooter } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
@@ -44,7 +44,7 @@ interface WishlistItem {
   updated_at?: string;
   user_id: string;
   username: string;
-
+  avatar_url?: string;
   watchers?: number;
   comment_count?: number;
   upvotes?: number;
@@ -59,7 +59,7 @@ interface WishlistComment {
   content: string;
   created_at: string;
   username: string;
-
+  avatar_url?: string;
 }
 
 interface User {
@@ -68,6 +68,7 @@ interface User {
   email: string;
   robloxUsername?: string;
   role?: string;
+  avatar_url?: string;
 }
 
 interface WishlistDetailsModalProps {
@@ -81,6 +82,7 @@ interface WishlistDetailsModalProps {
   deleteLoading: boolean;
   onReport?: (wishlist: WishlistItem) => void;
   onUserClick?: (userId: string) => void;
+  currentUser?: User | null;
 }
 
 interface ReportModalProps {
@@ -111,6 +113,24 @@ const formatDate = (dateString: string): string => {
   }
 };
 
+// Helper function to get avatar URL
+const getAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+    return `http://localhost:5000${avatarUrl}`;
+  }
+
+  console.log('getAvatarUrl: Processing filename:', avatarUrl);
+  const fullUrl = `http://localhost:5000/api/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Generated URL:', fullUrl);
+  return fullUrl;
+};
+
   // Enhanced Wishlist Details Modal Component with upvote/downvote and comments
 function WishlistDetailsModal({ 
   wishlist, 
@@ -122,7 +142,8 @@ function WishlistDetailsModal({
   canDelete, 
   deleteLoading,
   onReport,
-  onUserClick 
+  onUserClick,
+  currentUser
 }: WishlistDetailsModalProps) {
   const [comments, setComments] = useState<WishlistComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -133,13 +154,7 @@ function WishlistDetailsModal({
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [votingLoading, setVotingLoading] = useState(false);
   const [imageDeleteLoading, setImageDeleteLoading] = useState<string | null>(null);  // Load wishlist comments and votes when modal opens
-  useEffect(() => {
-    if (isOpen && wishlist) {
-      loadWishlistData();
-    }
-  }, [isOpen, wishlist]);
-
-  const loadWishlistData = async () => {
+  const loadWishlistData = useCallback(async () => {
     if (!wishlist) return;
 
     try {
@@ -156,10 +171,16 @@ function WishlistDetailsModal({
       if (commentsResponse.status === 'fulfilled') {
         console.log('Comments response:', commentsResponse.value);
         if (commentsResponse.value?.comments && Array.isArray(commentsResponse.value.comments)) {
-          setComments(commentsResponse.value.comments);
+          setComments(commentsResponse.value.comments.map((comment: any) => ({
+            ...comment,
+            avatar_url: comment.avatar_url || ''
+          })));
         } else if (Array.isArray(commentsResponse.value)) {
           // If the response is directly an array of comments
-          setComments(commentsResponse.value);
+          setComments(commentsResponse.value.map((comment: any) => ({
+            ...comment,
+            avatar_url: comment.avatar_url || ''
+          })));
         } else {
           console.warn('Unexpected comments response structure:', commentsResponse.value);
           setComments([]);
@@ -189,7 +210,13 @@ function WishlistDetailsModal({
     } finally {
       setLoadingComments(false);
     }
-  };
+  }, [wishlist]);
+
+  useEffect(() => {
+    if (isOpen && wishlist) {
+      loadWishlistData();
+    }
+  }, [isOpen, wishlist, loadWishlistData]);
 
   const handleUpvote = async () => {
     if (!wishlist || votingLoading) return;
@@ -316,6 +343,7 @@ function WishlistDetailsModal({
           {/* Author Info */}
           <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
             <Avatar className="w-12 h-12">
+              <AvatarImage src={getAvatarUrl(wishlist.avatar_url)} />
               <AvatarFallback>{wishlist.username?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -480,8 +508,9 @@ function WishlistDetailsModal({
             {/* Add Comment */}
             <div className="flex gap-3 p-4 border rounded-lg bg-muted/20">
               <Avatar className="w-8 h-8">
+                <AvatarImage src={getAvatarUrl(currentUser?.avatar_url)} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                  Y
+                  {currentUser?.username?.[0]?.toUpperCase() || 'Y'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 flex gap-2">
@@ -517,6 +546,7 @@ function WishlistDetailsModal({
                 comments.map((comment) => (
                   <div key={comment.comment_id} className="flex gap-3 p-3 border rounded-lg">
                     <Avatar className="w-8 h-8">
+                      <AvatarImage src={getAvatarUrl(comment.avatar_url)} />
                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
                         {comment.username[0]?.toUpperCase()}
                       </AvatarFallback>
@@ -813,7 +843,10 @@ export function Wishlist() {
     const loadCurrentUser = async () => {
       try {
         const user = await apiService.getCurrentUser();
-        setCurrentUser(user);
+        setCurrentUser({
+          ...user,
+          avatar_url: user.avatar_url || ''
+        });
         console.log('Current user loaded:', user);
       } catch (err) {
         console.error('Failed to load current user:', err);
@@ -845,7 +878,10 @@ export function Wishlist() {
       
       // Handle the response structure properly
       if (response && response.wishlists && Array.isArray(response.wishlists)) {
-        setWishlistItems(response.wishlists);
+        setWishlistItems(response.wishlists.map((item: any) => ({
+          ...item,
+          avatar_url: item.avatar_url || ''
+        })));
         
         // Set pagination if available
         if (response.pagination) {
@@ -858,7 +894,10 @@ export function Wishlist() {
         }
       } else if (Array.isArray(response)) {
         // If response is directly an array
-        setWishlistItems(response);
+        setWishlistItems(response.map((item: any) => ({
+          ...item,
+          avatar_url: item.avatar_url || ''
+        })));
       } else {
         // Fallback to empty array
         console.warn('Unexpected wishlist response structure:', response);
@@ -1641,6 +1680,7 @@ export function Wishlist() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3" onClick={() => handleWishlistClick(item)}>
                     <Avatar className="w-12 h-12">
+                      <AvatarImage src={getAvatarUrl(item.avatar_url)} />
                       <AvatarFallback>{item.username?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
                     
@@ -1777,6 +1817,7 @@ export function Wishlist() {
         deleteLoading={selectedWishlist ? deleteLoading === selectedWishlist.wishlist_id : false}
         onReport={handleReportWishlist}
         onUserClick={handleUserClick}
+        currentUser={currentUser}
       />
 
       {/* Report Modal */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -37,12 +37,31 @@ import {
 import { toast } from 'sonner';
 import { useAuth, useApp } from '../App';
 
+// Helper function to get avatar URL
+const getAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+    return `http://localhost:5000${avatarUrl}`;
+  }
+
+  console.log('getAvatarUrl: Processing filename:', avatarUrl);
+  const fullUrl = `http://localhost:5000/api/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Generated URL:', fullUrl);
+  return fullUrl;
+};
+
 interface User {
   id: string;
   username: string;
   email: string;
   robloxUsername?: string;
   role?: string;
+  avatar_url?: string;
 }
 
 interface ForumPost {
@@ -58,6 +77,7 @@ interface ForumPost {
   user_id: string;
   images?: { filename: string; originalName?: string }[];
   commentCount: number;
+  avatar_url?: string;
 }
 
 interface ForumComment {
@@ -68,6 +88,7 @@ interface ForumComment {
   created_at: string;
   username: string;
   credibility_score?: number;
+  avatar_url?: string;
 }
 
 interface ForumImageModalProps {
@@ -90,6 +111,7 @@ interface PostDetailsModalProps {
   deleteLoading: boolean;
   onReport?: () => void;
   onUserClick: (userId: string) => void;
+  currentUser: User | null;
 }
 
 interface ReportModalProps {
@@ -318,7 +340,7 @@ function ReportModal({ isOpen, onClose, onSubmit, loading }: ReportModalProps) {
 }
 
 // Enhanced Post Details Modal Component with upvote/downvote and comments
-function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport, onUserClick }: PostDetailsModalProps) {
+function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, canDelete, deleteLoading, onReport, onUserClick, currentUser }: PostDetailsModalProps) {
   const [comments, setComments] = useState<ForumComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -350,7 +372,11 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
 
       // Handle comments
       if (commentsResponse.status === 'fulfilled') {
-        setComments(commentsResponse.value.comments || []);
+        const commentsWithAvatars = (commentsResponse.value.comments || []).map((comment: any) => ({
+          ...comment,
+          avatar_url: comment.avatar_url || ''
+        }));
+        setComments(commentsWithAvatars);
       } else {
         console.error('Failed to load comments:', commentsResponse.reason);
         setComments([]);
@@ -477,6 +503,7 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
           {/* Author Info */}
           <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
             <Avatar className="w-12 h-12">
+              <AvatarImage src={getAvatarUrl(post.avatar_url)} />
               <AvatarFallback>{post.username?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -592,6 +619,7 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
             {/* Add Comment */}
             <div className="flex gap-3 p-4 border rounded-lg bg-muted/20">
               <Avatar className="w-8 h-8">
+                <AvatarImage src={getAvatarUrl(currentUser?.avatar_url)} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
                   Y
                 </AvatarFallback>
@@ -629,6 +657,7 @@ function PostDetailsModal({ post, isOpen, onClose, onEdit, onDelete, canEdit, ca
                 comments.map((comment) => (
                   <div key={comment.comment_id} className="flex gap-3 p-3 border rounded-lg">
                     <Avatar className="w-8 h-8">
+                      <AvatarImage src={getAvatarUrl(comment.avatar_url)} />
                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
                         {comment.username[0]?.toUpperCase()}
                       </AvatarFallback>
@@ -852,7 +881,35 @@ export function Forums() {
       }
       
       const response = await apiService.getForumPosts(params);
-      setPosts(response || []);
+      console.log('Forum posts response:', response);
+      
+      // Handle the response structure properly
+      if (response && response.posts && Array.isArray(response.posts)) {
+        setPosts(response.posts.map((post: any) => ({
+          ...post,
+          avatar_url: post.avatar_url || ''
+        })));
+        
+        // Set pagination if available
+        if (response.pagination) {
+          setTotalPages(response.pagination.pages || 1);
+          
+          // Only update current page if response.pagination.page is valid
+          if (response.pagination.page && response.pagination.page > 0) {
+            setCurrentPage(response.pagination.page);
+          }
+        }
+      } else if (Array.isArray(response)) {
+        // If response is directly an array
+        setPosts(response.map((post: any) => ({
+          ...post,
+          avatar_url: post.avatar_url || ''
+        })));
+      } else {
+        // Fallback to empty array
+        console.warn('Unexpected forum posts response structure:', response);
+        setPosts([]);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load posts');
     } finally {
@@ -1669,6 +1726,7 @@ export function Forums() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3" onClick={() => handlePostClick(post)}>
                     <Avatar className="w-12 h-12">
+                      <AvatarImage src={getAvatarUrl(post.avatar_url)} />
                       <AvatarFallback>{post.username?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
                     
@@ -1849,6 +1907,7 @@ export function Forums() {
         deleteLoading={selectedPost ? deleteLoading === selectedPost.post_id : false}
         onReport={selectedPost && currentUser && currentUser.id !== selectedPost.user_id ? () => handleReportPost(selectedPost) : undefined}
         onUserClick={handleUserClick}
+        currentUser={currentUser}
       />
 
       <ForumImageModal

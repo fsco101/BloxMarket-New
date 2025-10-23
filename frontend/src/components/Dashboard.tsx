@@ -977,7 +977,7 @@ function PostModal({ post, isOpen, onClose, onUserClick, onReportClick }: PostMo
                     <div key={comment.comment_id || comment.id} className="flex gap-5">
                       <Avatar className="w-12 h-12">
                         <AvatarImage
-                          src={getAvatarUrl(comment.user?.avatar_url)}
+                          src={getAvatarUrl(comment.user?.avatar_url || comment.avatar_url)}
                           className="object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;

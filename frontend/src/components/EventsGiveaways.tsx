@@ -35,6 +35,24 @@ import {
   Upload
 } from 'lucide-react';
 
+// Helper function to get avatar URL
+const getAvatarUrl = (avatarUrl?: string) => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl.startsWith('/uploads/') || avatarUrl.startsWith('/api/uploads/')) {
+    return `http://localhost:5000${avatarUrl}`;
+  }
+
+  console.log('getAvatarUrl: Processing filename:', avatarUrl);
+  const fullUrl = `http://localhost:5000/api/uploads/avatars/${avatarUrl}`;
+  console.log('getAvatarUrl: Generated URL:', fullUrl);
+  return fullUrl;
+};
+
 interface Event {
   _id: string;
   title: string;
@@ -51,6 +69,7 @@ interface Event {
     user_id: string;
     username: string;
     avatar?: string;
+    avatar_url?: string;
     verified?: boolean;
   };
   interested?: Array<{
@@ -82,6 +101,7 @@ interface EventComment {
   created_at: string;
   username: string;
   credibility_score?: number;
+  avatar_url?: string;
 }
 
 // Event Details Modal Component
@@ -97,6 +117,11 @@ interface EventDetailsModalProps {
   onJoin: (eventId: string, eventType: string) => void;
   joinLoading: string | null;
   onUserClick: (userId: string) => void;
+  currentUser: {
+    id: string;
+    username: string;
+    avatar_url?: string;
+  } | null;
 }
 
 function EventDetailsModal({ 
@@ -110,7 +135,8 @@ function EventDetailsModal({
   deleteLoading,
   onJoin,
   joinLoading,
-  onUserClick
+  onUserClick,
+  currentUser
 }: EventDetailsModalProps) {
   const [comments, setComments] = useState<EventComment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -142,7 +168,20 @@ function EventDetailsModal({
   
         // Handle comments
         if (commentsResponse.status === 'fulfilled') {
-          setComments(commentsResponse.value.comments || []);
+          const commentsWithAvatars = (commentsResponse.value.comments || []).map((comment: {
+            comment_id: string;
+            event_id: string;
+            user_id: string;
+            content: string;
+            created_at: string;
+            username: string;
+            credibility_score?: number;
+            avatar_url?: string;
+          }) => ({
+            ...comment,
+            avatar_url: comment.avatar_url || ''
+          }));
+          setComments(commentsWithAvatars);
         } else {
           console.error('Failed to load comments:', commentsResponse.reason);
           setComments([]);
@@ -318,7 +357,7 @@ function EventDetailsModal({
             {/* Event Info */}
             <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
               <Avatar className="w-12 h-12">
-                <AvatarImage src={event.creator?.avatar || `/api/placeholder/40/40`} />
+                <AvatarImage src={getAvatarUrl(event.creator?.avatar_url)} />
                 <AvatarFallback>{event.creator?.username?.[0] || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
@@ -495,6 +534,7 @@ function EventDetailsModal({
               {/* Add Comment */}
               <div className="flex gap-3 p-4 border rounded-lg bg-muted/20">
                 <Avatar className="w-8 h-8">
+                  <AvatarImage src={getAvatarUrl(currentUser?.avatar_url)} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
                     Y
                   </AvatarFallback>
@@ -532,6 +572,7 @@ function EventDetailsModal({
                   comments.map((comment) => (
                     <div key={comment.comment_id} className="flex gap-3 p-3 border rounded-lg">
                       <Avatar className="w-8 h-8">
+                        <AvatarImage src={getAvatarUrl(comment.avatar_url)} />
                         <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
                           {comment.username[0]?.toUpperCase()}
                         </AvatarFallback>
@@ -1904,7 +1945,7 @@ export function EventsGiveaways() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
                       <Avatar className="w-12 h-12">
-                        <AvatarImage src={event.creator?.avatar || `/api/placeholder/40/40`} />
+                        <AvatarImage src={getAvatarUrl(event.creator?.avatar_url)} />
                         <AvatarFallback>{event.creator?.username?.[0] || 'U'}</AvatarFallback>
                       </Avatar>
                       
@@ -2143,6 +2184,7 @@ export function EventsGiveaways() {
         onJoin={handleJoinEvent}
         joinLoading={joinLoading}
         onUserClick={handleUserClick}
+        currentUser={user}
       />
 
       {/* Event Image Modal */}

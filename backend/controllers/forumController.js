@@ -40,6 +40,7 @@ export const forumController = {
             username: post.user_id.username,
             vouch_count: post.user_id.vouch_count,
             user_id: post.user_id._id,
+            avatar_url: post.user_id.avatar_url,
             images: post.images || [],
             commentCount
           };
@@ -96,12 +97,14 @@ export const forumController = {
         username: post.user_id.username,
         vouch_count: post.user_id.vouch_count,
         userVote: userVote ? userVote.vote_type : null,
+        avatar_url: post.user_id.avatar_url,
         comments: comments.map(comment => ({
           comment_id: comment._id,
           content: comment.content,
           created_at: comment.createdAt,
           username: comment.user_id.username,
-          vouch_count: comment.user_id.vouch_count
+          vouch_count: comment.user_id.vouch_count,
+          avatar_url: comment.user_id.avatar_url
         }))
       };
 
@@ -513,7 +516,8 @@ export const forumController = {
         content: comment.content,
         created_at: comment.createdAt,
         username: comment.user_id.username,
-        vouch_count: comment.user_id.vouch_count
+        vouch_count: comment.user_id.vouch_count,
+        avatar_url: comment.user_id.avatar_url
       };
 
       console.log('Comment response:', responseData);
@@ -554,7 +558,8 @@ export const forumController = {
         created_at: comment.createdAt,
         username: comment.user_id.username,
         vouch_count: comment.user_id.vouch_count,
-        user_id: comment.user_id._id
+        user_id: comment.user_id._id,
+        avatar_url: comment.user_id.avatar_url
       }));
 
       res.json({

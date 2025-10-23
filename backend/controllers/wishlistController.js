@@ -85,7 +85,7 @@ class WishlistController {
 
       // Get wishlists with user data
       const wishlists = await Wishlist.find(query)
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .sort(sortObject)
         .skip(skip)
         .limit(parseInt(limit))
@@ -125,6 +125,7 @@ class WishlistController {
             user_id: wishlist.user_id._id.toString(), // Ensure it's a string
             username: wishlist.user_id.username,
             credibility_score: wishlist.user_id.credibility_score || 0,
+            avatar_url: wishlist.user_id.avatar_url,
             watchers: wishlist.watchers || 0,
             comment_count: commentCount,
             upvotes: wishlist.upvotes || 0,
@@ -176,7 +177,7 @@ class WishlistController {
       }
 
       const wishlist = await Wishlist.findById(wishlistId)
-        .populate('user_id', 'username credibility_score roblox_username')
+        .populate('user_id', 'username credibility_score roblox_username avatar_url')
         .lean();
 
       if (!wishlist) {
@@ -220,6 +221,7 @@ class WishlistController {
           user_id: wishlist.user_id._id,
           username: wishlist.user_id.username,
           credibility_score: wishlist.user_id.credibility_score || 0,
+          avatar_url: wishlist.user_id.avatar_url,
           watchers: wishlist.watchers || 0,
           comment_count: commentCount,
           upvotes: wishlist.upvotes || 0,
@@ -341,7 +343,7 @@ class WishlistController {
 
       // Populate user data
       const populatedWishlist = await Wishlist.findById(wishlist._id)
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .lean();
 
       console.log('Wishlist populated successfully');
@@ -361,6 +363,7 @@ class WishlistController {
           user_id: populatedWishlist.user_id._id,
           username: populatedWishlist.user_id.username,
           credibility_score: populatedWishlist.user_id.credibility_score || 0,
+          avatar_url: populatedWishlist.user_id.avatar_url,
           watchers: 0,
           comment_count: 0
         }
@@ -500,7 +503,7 @@ class WishlistController {
 
       // Populate user data
       const populatedWishlist = await Wishlist.findById(wishlist._id)
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .lean();
 
       // Get comment count
@@ -523,6 +526,7 @@ class WishlistController {
           user_id: populatedWishlist.user_id._id,
           username: populatedWishlist.user_id.username,
           credibility_score: populatedWishlist.user_id.credibility_score || 0,
+          avatar_url: populatedWishlist.user_id.avatar_url,
           watchers: populatedWishlist.watchers || 0,
           comment_count: commentCount
         }
@@ -668,7 +672,7 @@ class WishlistController {
 
       // Get comments
       const comments = await WishlistComment.find({ wishlist_id: wishlistId })
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .sort({ created_at: -1 })
         .lean();
 
@@ -679,7 +683,8 @@ class WishlistController {
         content: comment.content,
         created_at: comment.created_at,
         username: comment.user_id.username,
-        credibility_score: comment.user_id.credibility_score || 0
+        credibility_score: comment.user_id.credibility_score || 0,
+        avatar_url: comment.user_id.avatar_url
       }));
 
       res.json({ 
@@ -773,7 +778,7 @@ class WishlistController {
 
       // Populate user data
       const populatedComment = await WishlistComment.findById(comment._id)
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .lean();
 
       res.status(201).json({
@@ -785,7 +790,8 @@ class WishlistController {
         content: populatedComment.content,
         created_at: populatedComment.created_at,
         username: populatedComment.user_id.username,
-        credibility_score: populatedComment.user_id.credibility_score || 0
+        credibility_score: populatedComment.user_id.credibility_score || 0,
+        avatar_url: populatedComment.user_id.avatar_url
       });
     } catch (error) {
       console.error('Error adding wishlist comment:', error);
@@ -818,7 +824,7 @@ class WishlistController {
 
       // Get user's wishlists
       const wishlists = await Wishlist.find({ user_id: userId })
-        .populate('user_id', 'username credibility_score')
+        .populate('user_id', 'username credibility_score avatar_url')
         .sort({ created_at: -1 })
         .skip(skip)
         .limit(parseInt(limit))
@@ -843,6 +849,7 @@ class WishlistController {
             user_id: wishlist.user_id._id,
             username: wishlist.user_id.username,
             credibility_score: wishlist.user_id.credibility_score || 0,
+            avatar_url: wishlist.user_id.avatar_url,
             watchers: wishlist.watchers || 0,
             comment_count: commentCount,
             upvotes: wishlist.upvotes || 0,

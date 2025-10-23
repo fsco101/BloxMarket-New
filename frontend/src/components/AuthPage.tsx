@@ -11,11 +11,23 @@ export function AuthPage() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-blue-100/50 to-purple-100/50 dark:from-blue-900/30 dark:to-purple-900/30" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Fallback gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900" />
 
-      <div className="relative w-full max-w-md">
+      {/* Background Image with Blur and Gray Shade */}
+      <div
+        className="absolute inset-0 bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('/authpage.jpg')`,
+          backgroundSize: 'cover',
+          filter: 'blur(3px) grayscale(20%) brightness(0.8)',
+          transform: 'scale(1.1)', // Slight scale to prevent blur edges
+        }}
+      />
+      {/* Enhanced Overlay for better text readability */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 via-gray-800/50 to-gray-900/60 dark:from-gray-900/70 dark:via-gray-800/60 dark:to-gray-900/70" />      {/* Content */}
+      <div className="relative w-full max-w-md z-10">
         {/* Theme Toggle */}
         <div className="flex justify-end mb-4">
           <div className="flex items-center gap-2 bg-background/80 backdrop-blur-sm rounded-lg p-2">
