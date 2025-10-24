@@ -32,7 +32,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Upload
+  Upload,
+  ImageIcon
 } from 'lucide-react';
 
 // Helper function to get avatar URL
@@ -52,6 +53,54 @@ const getAvatarUrl = (avatarUrl?: string) => {
   console.log('getAvatarUrl: Generated URL:', fullUrl);
   return fullUrl;
 };
+
+interface ImageDisplayProps {
+  src: string;
+  alt: string;
+  className?: string;
+  fallback?: React.ReactNode;
+}
+
+function ImageDisplay({ src, alt, className, fallback }: ImageDisplayProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    console.error('Image failed to load:', src);
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  if (imageError) {
+    return fallback || (
+      <div className={`bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${className}`}>
+        <div className="text-center text-gray-400">
+          <ImageIcon className="w-8 h-8 mx-auto mb-1" />
+          <span className="text-xs">Image unavailable</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative ${className}`}>
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-full object-cover rounded ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
+      />
+    </div>
+  );
+}
 
 interface Event {
   _id: string;
@@ -351,6 +400,9 @@ function EventDetailsModal({
                 {event.status}
               </Badge>
             </DialogTitle>
+            <DialogDescription>
+              View event details, participate, and interact with the community
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6">
@@ -437,15 +489,10 @@ function EventDetailsModal({
                         className="aspect-square overflow-hidden rounded-lg border cursor-pointer hover:shadow-md transition-shadow group relative"
                         onClick={() => openImageModal(imageIndex)}
                       >
-                        <img
+                        <ImageDisplay
                           src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${image.filename}`}
                           alt={image.originalName || `Event image ${imageIndex + 1}`}
                           className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            console.error('Failed to load image:', image.filename);
-                          }}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                           <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -683,6 +730,9 @@ function EventDetailsModal({
       {showImageModal && event?.images && selectedImageIndex !== null && (
         <Dialog open={showImageModal} onOpenChange={closeImageModal}>
           <DialogContent className="max-w-6xl max-h-[95vh] p-0 bg-black/90">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Event Image Viewer</DialogTitle>
+            </DialogHeader>
             <div className="relative w-full h-full flex items-center justify-center p-4">
               {/* Close Button */}
               <Button
@@ -717,15 +767,13 @@ function EventDetailsModal({
               )}
 
               {/* Image */}
-              <img
-                src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${event.images[selectedImageIndex].filename}`}
-                alt={event.images[selectedImageIndex].originalName || `Event image ${selectedImageIndex + 1}`}
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/api/placeholder/400/300';
-                }}
-              />
+              <div className="relative w-full h-full flex items-center justify-center">
+                <ImageDisplay
+                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${event.images[selectedImageIndex].filename}`}
+                  alt={event.images[selectedImageIndex].originalName || `Event image ${selectedImageIndex + 1}`}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
 
               {/* Image Info */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-center">
@@ -817,6 +865,8 @@ export function EventsGiveaways() {
   // Image handling state
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [uploadSelectedImages, setUploadSelectedImages] = useState<File[]>([]);
+  const [editImagePreviewUrls, setEditImagePreviewUrls] = useState<string[]>([]);
+  const [editUploadSelectedImages, setEditUploadSelectedImages] = useState<File[]>([]);
 
   // Add handlers for event image modal
   const handleEventImageClick = (images: Array<{
@@ -989,6 +1039,51 @@ export function EventsGiveaways() {
     setImagePreviewUrls([]);
   };
 
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length + editUploadSelectedImages.length > 5) {
+      setError('Maximum 5 images allowed');
+      return;
+    }
+
+    const validFiles = files.filter(file => {
+      if (!file.type.startsWith('image/')) {
+        setError('Only image files are allowed');
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError('File size must be less than 5MB');
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      setEditUploadSelectedImages(prev => [...prev, ...validFiles]);
+      
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setEditImagePreviewUrls(prev => [...prev, e.target?.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      setError('');
+    }
+  };
+
+  const handleRemoveEditImage = (index: number) => {
+    setEditUploadSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setEditImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearEditImages = () => {
+    setEditUploadSelectedImages([]);
+    setEditImagePreviewUrls([]);
+  };
+
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -1114,6 +1209,8 @@ export function EventsGiveaways() {
       requirements: event.requirements || [],
       maxParticipants: event.maxParticipants
     });
+    // Clear edit images when opening edit dialog
+    clearEditImages();
     setIsEditDialogOpen(true);
     // Close details modal
     setIsDetailsModalOpen(false);
@@ -1156,7 +1253,7 @@ export function EventsGiveaways() {
         prizes: newEvent.prizes.filter(p => p.trim()),
         requirements: newEvent.requirements.filter(r => r.trim()),
         maxParticipants: newEvent.maxParticipants
-      }, uploadSelectedImages);
+      }, editUploadSelectedImages);
       
       setIsEditDialogOpen(false);
       setEditingEvent(null);
@@ -1176,6 +1273,9 @@ export function EventsGiveaways() {
       
       // Clear images
       clearImages();
+      
+      // Clear edit images
+      clearEditImages();
       
       // Reload events to show the updated one
       await loadEvents();
@@ -1229,79 +1329,6 @@ export function EventsGiveaways() {
     return matchesSearch && matchesType;
   });
 
-  // Move ImageDisplay component outside of the main component or inside before the return statement
-  function ImageDisplay({ src, alt, className, fallback }: {
-    src: string;
-    alt: string;
-    className?: string;
-    fallback?: React.ReactNode;
-  }) {
-    const [imageError, setImageError] = useState(false);
-    const [imageLoading, setImageLoading] = useState(true);
-    const [retryCount, setRetryCount] = useState(0);
-
-    const handleImageLoad = () => {
-      setImageLoading(false);
-      setImageError(false);
-    };
-
-    const handleImageError = () => {
-      console.error('Image failed to load:', src);
-      if (retryCount < 2) {
-        setTimeout(() => {
-          setRetryCount(prev => prev + 1);
-          setImageError(false);
-          setImageLoading(true);
-        }, 1000);
-      } else {
-        setImageLoading(false);
-        setImageError(true);
-      }
-    };
-
-    const handleRetry = () => {
-      setRetryCount(0);
-      setImageError(false);
-      setImageLoading(true);
-    };
-
-    if (imageError) {
-      return fallback || (
-        <div className={`bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${className}`}>
-          <div className="text-center text-gray-400">
-            <Upload className="w-8 h-8 mx-auto mb-1" />
-            <span className="text-xs block mb-1">Image unavailable</span>
-            <button
-              onClick={handleRetry}
-              className="text-xs text-blue-500 hover:text-blue-600 underline focus:outline-none"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className={`relative ${className}`}>
-        {imageLoading && (
-          <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 flex items-center justify-center rounded">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          </div>
-        )}
-        <img
-          src={`${src}${retryCount > 0 ? `?v=${retryCount}` : ''}`}
-          alt={alt}
-          className={`w-full h-full object-cover rounded ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
-        />
-      </div>
-    );
-  }
-
   // Move EventImageModal component before the return statement
   function EventImageModal({ images, currentIndex, isOpen, onClose, onNext, onPrevious }: {
     images: Array<{
@@ -1324,6 +1351,9 @@ export function EventsGiveaways() {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Event Images</DialogTitle>
+          </DialogHeader>
           <div className="relative bg-black rounded-lg overflow-hidden">
             <button
               onClick={onClose}
@@ -1350,12 +1380,10 @@ export function EventsGiveaways() {
             )}
             
             <div className="relative aspect-video bg-black flex items-center justify-center">
-              <img
+              <ImageDisplay
                 src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/uploads/event/${currentImage.filename}`}
                 alt={currentImage.originalName || `Event image ${currentIndex + 1}`}
                 className="max-w-full max-h-full object-contain"
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
               />
             </div>
             
@@ -2587,11 +2615,11 @@ export function EventsGiveaways() {
                     e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
                     const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
                     if (files.length > 0) {
-                      const input = document.getElementById('event-image-upload') as HTMLInputElement;
+                      const input = document.getElementById('edit-event-image-upload') as HTMLInputElement;
                       const dt = new DataTransfer();
                       files.forEach(file => dt.items.add(file));
                       input.files = dt.files;
-                      handleImageSelect({ target: input } as React.ChangeEvent<HTMLInputElement>);
+                      handleEditImageSelect({ target: input } as React.ChangeEvent<HTMLInputElement>);
                     }
                   }}
                 >
@@ -2599,42 +2627,42 @@ export function EventsGiveaways() {
                     type="file"
                     multiple
                     accept="image/*"
-                    onChange={handleImageSelect}
+                    onChange={handleEditImageSelect}
                     className="hidden"
-                    id="event-image-upload"
-                    disabled={uploadSelectedImages.length >= 5}
+                    id="edit-event-image-upload"
+                    disabled={editUploadSelectedImages.length >= 5}
                   />
                   <label
-                    htmlFor="event-image-upload"
+                    htmlFor="edit-event-image-upload"
                     className={`cursor-pointer flex flex-col items-center gap-2 ${
-                      uploadSelectedImages.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''
+                      editUploadSelectedImages.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
                     <Upload className="w-8 h-8 text-gray-400" />
                     <span className="text-sm text-gray-600 dark:text-gray-300">
-                      {uploadSelectedImages.length >= 5 
+                      {editUploadSelectedImages.length >= 5 
                         ? 'Maximum 5 images reached' 
                         : 'Click to upload images or drag and drop'
                       }
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      PNG, JPG, GIF up to 5MB each • {uploadSelectedImages.length}/5 selected
+                      PNG, JPG, GIF up to 5MB each • {editUploadSelectedImages.length}/5 selected
                     </span>
                   </label>
                 </div>
 
                 {/* Image Previews */}
-                {imagePreviewUrls.length > 0 && (
+                {editImagePreviewUrls.length > 0 && (
                   <div className="space-y-2 mt-4">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600 dark:text-gray-300">
-                        {imagePreviewUrls.length} image{imagePreviewUrls.length !== 1 ? 's' : ''} selected
+                        {editImagePreviewUrls.length} image{editImagePreviewUrls.length !== 1 ? 's' : ''} selected
                       </span>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={clearImages}
+                        onClick={clearEditImages}
                         className="text-red-600 hover:text-red-700"
                       >
                         <X className="w-3 h-3 mr-1" />
@@ -2642,7 +2670,7 @@ export function EventsGiveaways() {
                       </Button>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {imagePreviewUrls.map((url, index) => (
+                      {editImagePreviewUrls.map((url, index) => (
                         <div key={index} className="relative group">
                           <img
                             src={url}
@@ -2653,7 +2681,7 @@ export function EventsGiveaways() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => removeImagePreview(index)}
+                            onClick={() => handleRemoveEditImage(index)}
                             className="absolute top-1 right-1 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white border-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <X className="w-3 h-3" />
